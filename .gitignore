@@ -1,0 +1,54 @@
+# Pliki tymczasowe Pythona
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Wygenerowane pliki parsera ANTLR
+src/parser/generated/
+
+# Pliki wyjściowe kompilatora
+*.ll
+*.s
+*.exe
+*.o
+*.out
+
+# Środowiska wirtualne
+venv/
+ENV/
+.env
+.venv
+
+# Pliki IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# Logi i pliki tymczasowe
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+*.jar
