@@ -6,10 +6,20 @@ class CompilerErrorListener(ErrorListener):
         self.errors = []
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
-        # Dla brakujących średników, nie precyzuj konkretnej linii
-        if "missing ';'" in msg:
+        # Rozróżnienie rodzaju błędu
+        if "token recognition error" in msg:
+            # To jest błąd leksykalny
+            token_char = msg.split("at: '")[1].split("'")[0] if "at: '" in msg else "?"
+            error_msg = f"Błąd leksykalny w linii {line}:{column} - nierozpoznany token: '{token_char}'"
+        elif "missing ';'" in msg:
+            # Brak średnika
             error_msg = f"Błąd składniowy: brak średnika przed '{offendingSymbol.text}' w linii {line}"
+        elif "mismatched input" in msg and "expecting" in msg:
+            # Niedopasowany token
+            expected = msg.split("expecting ")[1]
+            error_msg = f"Błąd składniowy w linii {line}:{column} - nieoczekiwany token: '{offendingSymbol.text}', oczekiwano: {expected}"
         else:
+            # Inne błędy składniowe
             error_msg = f"Błąd składniowy w linii {line}:{column} - {msg}"
         
         self.errors.append(error_msg)
