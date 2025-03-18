@@ -1,0 +1,32 @@
+// Testowanie tablic typu int
+int arr[5];         // Deklaracja tablicy 5 elementów
+arr[0] = 10;        // Przypisanie do elementu tablicy
+arr[1] = 20;
+arr[2] = 30;
+arr[3] = 40;
+arr[4] = 50;
+
+// Wyświetlenie wartości
+print arr[0];       // Powinno wydrukować 10
+print arr[2] + arr[3];  // Powinno wydrukować 70
+
+// Tablica int z inicjalizacją
+int primes[3] = {2, 3, 5};
+print primes[0] + primes[1] + primes[2];  // Powinno wydrukować 10
+
+// Operacje na tablicach
+int a[2];
+a[0] = 5;
+a[1] = a[0] * 2;
+print a[1];  // Powinno wydrukować 10
+
+// Testowanie tablic typu float
+float temperatures[3] = {36.6, 37.2, 38.5};
+print temperatures[0];  // Powinno wydrukować 36.6
+print temperatures[2] - temperatures[0];  // Powinno wydrukować 1.9
+
+// Operacje mieszane
+float factors[2];
+factors[0] = 2.5;
+factors[1] = factors[0] * temperatures[1];
+print factors[1];  // Powinno wydrukować 93.0

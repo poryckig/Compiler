@@ -1,0 +1,20 @@
+// Test automatycznej konwersji typów
+int int_arr[3];
+float float_arr[3];
+
+// Przypisanie float do int (obcięcie)
+int_arr[0] = 3.75;  // Powinno zapisać 3
+print int_arr[0];  // Oczekiwane: 3
+
+// Przypisanie int do float (konwersja)
+float_arr[0] = 5;  // Powinno zapisać 5.0
+print float_arr[0];  // Oczekiwane: 5.0
+
+// Operacje mieszane
+int_arr[1] = 10;
+float_arr[1] = 2.5;
+float_arr[2] = int_arr[1] / float_arr[1];  // 10 / 2.5 = 4.0
+print float_arr[2];  // Oczekiwane: 4.0
+
+int_arr[2] = float_arr[1] * 2;  // 2.5 * 2 = 5.0 -> 5
+print int_arr[2];  // Oczekiwane: 5
