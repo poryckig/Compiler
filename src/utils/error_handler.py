@@ -6,7 +6,12 @@ class CompilerErrorListener(ErrorListener):
         self.errors = []
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
-        error_msg = f"Błąd składniowy w linii {line}:{column} - {msg}"
+        # Dla brakujących średników, nie precyzuj konkretnej linii
+        if "missing ';'" in msg:
+            error_msg = f"Błąd składniowy: brak średnika przed '{offendingSymbol.text}' w linii {line}"
+        else:
+            error_msg = f"Błąd składniowy w linii {line}:{column} - {msg}"
+        
         self.errors.append(error_msg)
         print(error_msg)
 
