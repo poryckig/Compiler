@@ -85,4 +85,76 @@ class ASTBuilder(langVisitor):
         # Jeśli żaden z powyższych przypadków nie pasuje, 
         # delegujemy do standardowej implementacji
         return self.visitChildren(ctx)
-    
+    ###############################################
+    def visitSimpleVarDecl(self, ctx):
+        var_type = ctx.type_().getText()  # Zmiana z ctx.type() na ctx.type_()
+        name = ctx.ID().getText()
+        
+        initial_value = None
+        if ctx.expression():
+            initial_value = self.visit(ctx.expression())
+        
+        return VariableDeclaration(var_type, name, initial_value)
+
+    def visitArrayDecl(self, ctx):
+        var_type = ctx.type_().getText()  # Zmiana z ctx.type() na ctx.type_()
+        name = ctx.ID().getText()
+        size = int(ctx.INT().getText())
+        
+        initial_values = []
+        if ctx.arrayInitializer():
+            # Odwiedź wszystkie wyrażenia w inicjalizatorze
+            for expr_ctx in ctx.arrayInitializer().expression():
+                initial_values.append(self.visit(expr_ctx))
+        
+        return ArrayDeclaration(var_type, name, size, initial_values)
+
+    def visitArrayInitializer(self, ctx):
+        values = []
+        for expr_ctx in ctx.expression():
+            values.append(self.visit(expr_ctx))
+        return values
+
+    def visitSimpleAssign(self, ctx):
+        name = ctx.ID().getText()
+        value = self.visit(ctx.expression())
+        return Assignment(name, value)
+
+    def visitArrayAssign(self, ctx):
+        name = ctx.ID().getText()
+        index = self.visit(ctx.expression(0))
+        value = self.visit(ctx.expression(1))
+        return ArrayAssignment(name, index, value)
+
+    def visitArrayAccessExpr(self, ctx):
+        name = ctx.ID().getText()
+        index = self.visit(ctx.expression())
+        return ArrayAccess(name, index)
+
+    # Zaktualizuj pozostałe metody dla wyrażeń
+    def visitMulDivExpr(self, ctx):
+        left = self.visit(ctx.expression(0))
+        right = self.visit(ctx.expression(1))
+        op = ctx.getChild(1).getText()
+        return BinaryOperation(left, op, right)
+
+    def visitAddSubExpr(self, ctx):
+        left = self.visit(ctx.expression(0))
+        right = self.visit(ctx.expression(1))
+        op = ctx.getChild(1).getText()
+        return BinaryOperation(left, op, right)
+
+    def visitParenExpr(self, ctx):
+        return self.visit(ctx.expression())
+
+    def visitVarExpr(self, ctx):
+        name = ctx.ID().getText()
+        return Variable(name)
+
+    def visitIntLiteral(self, ctx):
+        value = int(ctx.INT().getText())
+        return IntegerLiteral(value)
+
+    def visitFloatLiteral(self, ctx):
+        value = float(ctx.FLOAT().getText())
+        return FloatLiteral(value)

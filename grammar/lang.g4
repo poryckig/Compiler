@@ -11,7 +11,12 @@ statement
     ;
 
 variableDeclaration
-    : type ID ('=' expression)?
+    : type ID ('=' expression)?                           # SimpleVarDecl
+    | type ID '[' INT ']' ('=' arrayInitializer)?         # ArrayDecl
+    ;
+
+arrayInitializer
+    : '{' expression (',' expression)* '}'
     ;
 
 type
@@ -20,7 +25,8 @@ type
     ;
 
 assignment
-    : ID '=' expression
+    : ID '=' expression                                  # SimpleAssign
+    | ID '[' expression ']' '=' expression               # ArrayAssign
     ;
 
 printStatement
@@ -28,19 +34,21 @@ printStatement
     ;
 
 readStatement
-    : 'read' ID
+    : 'read' ID                                          # SimpleRead
+    | 'read' ID '[' expression ']'                       # ArrayRead
     ;
 
 expression
-    : expression ('*' | '/') expression
-    | expression ('+' | '-') expression
-    | '(' expression ')'
-    | ID
-    | INT
-    | FLOAT
+    : expression ('*' | '/') expression                  # MulDivExpr
+    | expression ('+' | '-') expression                  # AddSubExpr
+    | '(' expression ')'                                 # ParenExpr
+    | ID                                                 # VarExpr
+    | ID '[' expression ']'                              # ArrayAccessExpr
+    | INT                                                # IntLiteral
+    | FLOAT                                              # FloatLiteral
     ;
 
-ID: [a-zA-Z][a-zA-Z0-9]*;
+ID: [a-zA-Z][a-zA-Z0-9_]*;
 INT: [0-9]+;
 FLOAT: [0-9]+ '.' [0-9]+;
 WS: [ \t\r\n]+ -> skip;
