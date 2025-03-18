@@ -7,6 +7,7 @@ statement
     | assignment ';'
     | printStatement ';'
     | readStatement ';'
+    | ';'
     ;
 
 variableDeclaration
