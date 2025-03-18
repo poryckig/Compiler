@@ -8,53 +8,7 @@ from src.parser.generated.langLexer import langLexer
 from src.parser.generated.langParser import langParser
 from src.syntax_tree.ast_builder import ASTBuilder
 from src.codegen.llvm_generator import LLVMGenerator
-
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <input_file>")
-        return
-    
-    input_file = sys.argv[1]
-    print(f"Przetwarzanie pliku: {input_file}")
-    
-    try:
-        # 1. Analiza leksykalna
-        input_stream = FileStream(input_file)
-        lexer = langLexer(input_stream)
-        tokens = CommonTokenStream(lexer)
-        
-        # 2. Analiza składniowa
-        parser = langParser(tokens)
-        tree = parser.program()
-        
-        # 3. Budowa AST
-        print("Budowanie AST...")
-        ast_builder = ASTBuilder()
-        ast = ast_builder.visit(tree)
-        
-        # 4. Wyświetlenie AST (do debugowania)
-        if ast:
-            print("AST utworzone pomyślnie:")
-            print_ast(ast)
-        else:
-            print("AST nie zostało utworzone poprawnie.")
-        
-        # 5. Generowanie kodu LLVM IR
-        print("Generowanie kodu LLVM IR...")
-        generator = LLVMGenerator()
-        llvm_ir = generator.generate(ast)
-        
-        # 6. Zapis wygenerowanego kodu
-        output_file = input_file.replace('.lang', '.ll')
-        with open(output_file, 'w') as f:
-            f.write(llvm_ir)
-        
-        print(f"Kompilacja zakończona. Wyjście zapisane do {output_file}")
-        
-    except Exception as e:
-        print(f"Błąd: {str(e)}")
-        import traceback
-        traceback.print_exc()
+from src.utils.error_handler import CompilerErrorListener
 
 def print_ast(node, indent=0):
     """Pomocnicza funkcja do wyświetlania AST w formie drzewa"""
@@ -100,5 +54,65 @@ def print_ast(node, indent=0):
         print(" " * (indent + 2) + "right:")
         print_ast(node.right, indent + 4)
 
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <input_file>")
+        return
+    
+    input_file = sys.argv[1]
+    print(f"Przetwarzanie pliku: {input_file}")
+    
+    try:
+        # Tworzenie i rejestracja ErrorListener
+        error_listener = CompilerErrorListener()
+        
+        # 1. Analiza leksykalna
+        input_stream = FileStream(input_file, encoding='utf-8')
+        lexer = langLexer(input_stream)
+        lexer.removeErrorListeners()  # Usuń domyślny listener
+        lexer.addErrorListener(error_listener)
+        tokens = CommonTokenStream(lexer)
+        
+        # 2. Analiza składniowa
+        parser = langParser(tokens)
+        parser.removeErrorListeners()  # Usuń domyślny listener
+        parser.addErrorListener(error_listener)
+        tree = parser.program()
+        
+        # Sprawdź czy były błędy
+        if error_listener.has_errors():
+            print("Kompilacja przerwana z powodu błędów.")
+            return
+        
+        # 3. Budowa AST
+        print("Budowanie AST...")
+        ast_builder = ASTBuilder()
+        ast = ast_builder.visit(tree)
+        
+        # 4. Wyświetlenie AST (do debugowania)
+        if ast:
+            print("AST utworzone pomyślnie:")
+            print_ast(ast)
+        else:
+            print("AST nie zostało utworzone poprawnie.")
+            return
+        
+        # 5. Generowanie kodu LLVM IR
+        print("Generowanie kodu LLVM IR...")
+        generator = LLVMGenerator()
+        llvm_ir = generator.generate(ast)
+        
+        # 6. Zapis wygenerowanego kodu
+        output_file = input_file.replace('.lang', '.ll')
+        with open(output_file, 'w') as f:
+            f.write(llvm_ir)
+        
+        print(f"Kompilacja zakończona. Wyjście zapisane do {output_file}")
+        
+    except Exception as e:
+        print(f"Błąd: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
 if __name__ == '__main__':
     main()

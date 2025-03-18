@@ -1,0 +1,12 @@
+float x = 3.14;
+float y = 2.71;
+
+float sum = x + y;
+float difference = x - y;
+float product = x * y;
+float quotient = x / y;
+
+print sum;
+print difference;
+print product;
+print quotient;
