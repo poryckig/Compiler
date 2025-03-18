@@ -1,0 +1,2 @@
+int x = ; // Brak wyrażenia po prawej stronie
+print x;

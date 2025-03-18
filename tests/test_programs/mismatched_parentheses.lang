@@ -1,0 +1,2 @@
+int x = (5 + 3; // Brak zamykającego nawiasu
+print x;
