@@ -11,6 +11,7 @@ from src.actions.operations.binary_operation_generator import visit_BinaryOperat
 from src.IO.IO_generator import visit_PrintStatement, visit_ReadStatement
 from src.array.array_generator import visit_ArrayDeclaration, visit_ArrayAccess, visit_ArrayAssignment
 from src.matrix.matrix_generator import visit_MatrixDeclaration, visit_MatrixAccess, visit_MatrixAssignment, _emit_matrix_error_message, _check_matrix_bounds_and_store
+from src.variables.string_generator import visit_StringLiteral
 
 class LLVMGenerator:
     def __init__(self):
@@ -120,3 +121,5 @@ LLVMGenerator.visit_MatrixAccess = visit_MatrixAccess
 LLVMGenerator.visit_MatrixAssignment = visit_MatrixAssignment
 LLVMGenerator._emit_matrix_error_message = _emit_matrix_error_message
 LLVMGenerator._check_matrix_bounds_and_store = _check_matrix_bounds_and_store
+
+LLVMGenerator.visit_StringLiteral = visit_StringLiteral

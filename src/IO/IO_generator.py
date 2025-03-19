@@ -6,71 +6,35 @@ def visit_PrintStatement(self, node):
     # Oblicz wartość do wydrukowania
     value = self.visit(node.expression)
     
-    if isinstance(value.type, ir.FloatType):
-        # Dla liczb zmiennoprzecinkowych użyjmy nowego, uproszczonego podejścia
-        
-        # Format string z terminatorem null
+    if isinstance(value.type, ir.PointerType) and value.type.pointee == ir.IntType(8):
+        # Dla stringów
+        format_str = "%s\n\0"
+    elif isinstance(value.type, ir.FloatType):
+        # Dla liczb zmiennoprzecinkowych
         format_str = "%.1f\n\0"
-        format_bytes = format_str.encode("ascii")
-        
-        # Stwórz globalną stałą dla formatu
-        format_type = ir.ArrayType(ir.IntType(8), len(format_bytes))
-        format_const = ir.Constant(format_type, bytearray(format_bytes))
-        
-        # Dla każdego wywołania generuj unikalną nazwę
-        global_id = f"fmt.float.{next(self._global_counter)}"
-        fmt_global = ir.GlobalVariable(self.module, format_type, name=global_id)
-        fmt_global.linkage = 'private'
-        fmt_global.global_constant = True
-        fmt_global.initializer = format_const
-        
-        # Konwersja float -> double
-        double_val = self.builder.fpext(value, ir.DoubleType())
-        
-        # Konwersja wskaźnika
-        fmt_ptr = self.builder.bitcast(fmt_global, ir.PointerType(ir.IntType(8)))
-        
-        # Wywołanie printf
-        self.builder.call(self.printf_func, [fmt_ptr, double_val])
-        
-        # Wywołanie funkcji fflush aby upewnić się, że bufor jest opróżniony
-        if not hasattr(self, 'fflush_func'):
-            fflush_type = ir.FunctionType(self.int_type, [ir.PointerType(ir.IntType(8))])
-            self.fflush_func = ir.Function(self.module, fflush_type, name="fflush")
-        
-        # fflush(NULL) opróżnia wszystkie bufory
-        null_ptr = ir.Constant(ir.PointerType(ir.IntType(8)), None)
-        self.builder.call(self.fflush_func, [null_ptr])
+        # Konwersja float na double dla printf
+        value = self.builder.fpext(value, ir.DoubleType())
     else:
         # Dla liczb całkowitych
         format_str = "%d\n\0"
-        format_bytes = format_str.encode("ascii")
-        
-        # Stwórz globalną stałą dla formatu
-        format_type = ir.ArrayType(ir.IntType(8), len(format_bytes))
-        format_const = ir.Constant(format_type, bytearray(format_bytes))
-        
-        # Dla każdego wywołania generuj unikalną nazwę
-        global_id = f"fmt.int.{next(self._global_counter)}"
-        fmt_global = ir.GlobalVariable(self.module, format_type, name=global_id)
-        fmt_global.linkage = 'private'
-        fmt_global.global_constant = True
-        fmt_global.initializer = format_const
-        
-        # Konwersja wskaźnika
-        fmt_ptr = self.builder.bitcast(fmt_global, ir.PointerType(ir.IntType(8)))
-        
-        # Wywołanie printf
-        self.builder.call(self.printf_func, [fmt_ptr, value])
-        
-        # Wywołanie funkcji fflush aby upewnić się, że bufor jest opróżniony
-        if not hasattr(self, 'fflush_func'):
-            fflush_type = ir.FunctionType(self.int_type, [ir.PointerType(ir.IntType(8))])
-            self.fflush_func = ir.Function(self.module, fflush_type, name="fflush")
-        
-        # fflush(NULL) opróżnia wszystkie bufory
-        null_ptr = ir.Constant(ir.PointerType(ir.IntType(8)), None)
-        self.builder.call(self.fflush_func, [null_ptr])
+    
+    # Tworzenie stałej dla formatu
+    format_bytes = format_str.encode('ascii')
+    fmt_type = ir.ArrayType(ir.IntType(8), len(format_bytes))
+    fmt_const = ir.Constant(fmt_type, bytearray(format_bytes))
+    
+    # Globalna zmienna dla formatu
+    global_id = f"fmt.{next(self._global_counter)}"
+    fmt_global = ir.GlobalVariable(self.module, fmt_type, name=global_id)
+    fmt_global.linkage = 'private'
+    fmt_global.global_constant = True
+    fmt_global.initializer = fmt_const
+    
+    # Konwersja wskaźnika
+    fmt_ptr = self.builder.bitcast(fmt_global, ir.PointerType(ir.IntType(8)))
+    
+    # Wywołanie printf - używamy funkcji zadeklarowanej w głównym generatorze
+    self.builder.call(self.printf_func, [fmt_ptr, value])
     
 def visit_ReadStatement(self, node):
     """Generuje kod LLVM dla instrukcji read."""
@@ -180,8 +144,8 @@ def visit_ReadStatement(self, node):
         self.builder.position_at_end(merge_block)
             
     elif hasattr(node, 'index') and node.index is not None:
-        # Tutaj istniejący kod dla obsługi tablic, który już masz
+        # [...]
         pass
     else:
-        # Tutaj istniejący kod dla obsługi zwykłych zmiennych, który już masz
+        # [...]
         pass

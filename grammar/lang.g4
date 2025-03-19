@@ -28,6 +28,7 @@ matrixInitializer
 type
     : 'int'
     | 'float'
+    | 'string'               // Typ string
     ;
 
 assignment
@@ -48,18 +49,26 @@ readStatement
     ;
 
 expression
-    : expression ('*' | '/') expression                  # MulDivExpr
-    | expression ('+' | '-') expression                  # AddSubExpr
-    | '(' expression ')'                                 # ParenExpr
+    : multiplyingExpression (('+' | '-') multiplyingExpression)*   # AddSubExpr
+    ;
+
+multiplyingExpression
+    : primaryExpression (('*' | '/') primaryExpression)*           # MulDivExpr
+    ;
+
+primaryExpression
+    : '(' expression ')'                                 # ParenExpr
     | ID                                                 # VarExpr
     | ID '[' expression ']'                              # ArrayAccessExpr
     | ID '[' expression ']' '[' expression ']'           # MatrixAccessExpr
     | INT                                                # IntLiteral
     | FLOAT                                              # FloatLiteral
+    | STRING                                             # StringLiteral
     ;
 
 ID: [a-zA-Z][a-zA-Z0-9_]*;
 INT: [0-9]+;
 FLOAT: [0-9]+ '.' [0-9]+;
+STRING: '"' (~["\\\r\n] | '\\' ["\\/bfnrt])* '"';        // Literał stringowy
 WS: [ \t\r\n]+ -> skip;
 COMMENT: '//' ~[\r\n]* -> skip;

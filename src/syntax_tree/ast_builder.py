@@ -100,16 +100,46 @@ class ASTBuilder(langVisitor):
 
 #           * * * * BINARY OPERATIONS * * * * 
     def visitAddSubExpr(self, ctx):
-        left = self.visit(ctx.expression(0))
-        right = self.visit(ctx.expression(1))
-        op = ctx.getChild(1).getText()
-        return BinaryOperation(left, op, right)
+        """Obsługuje dodawanie i odejmowanie."""
+        # Pobierz pierwszy operand (pierwszy "multiplyingExpression")
+        left = self.visit(ctx.multiplyingExpression(0))
+        
+        # Dla każdego operatora i operandu
+        for i in range(len(ctx.children) // 2):
+            # Sprawdź, czy mamy wystarczającą liczbę dzieci
+            op_index = i * 2 + 1
+            right_index = i * 2 + 2
+            
+            if op_index < len(ctx.children) and right_index < len(ctx.children):
+                # Pobierz operator i prawy operand
+                op = ctx.children[op_index].getText()
+                right = self.visit(ctx.multiplyingExpression(i + 1))
+                
+                # Utwórz operację binarną
+                left = BinaryOperation(left, op, right)
+        
+        return left
 
     def visitMulDivExpr(self, ctx):
-        left = self.visit(ctx.expression(0))
-        right = self.visit(ctx.expression(1))
-        op = ctx.getChild(1).getText()
-        return BinaryOperation(left, op, right)
+        """Obsługuje mnożenie i dzielenie."""
+        # Pobierz pierwszy operand (pierwszy "primaryExpression")
+        left = self.visit(ctx.primaryExpression(0))
+        
+        # Dla każdego operatora i operandu
+        for i in range(len(ctx.children) // 2):
+            # Sprawdź, czy mamy wystarczającą liczbę dzieci
+            op_index = i * 2 + 1
+            right_index = i * 2 + 2
+            
+            if op_index < len(ctx.children) and right_index < len(ctx.children):
+                # Pobierz operator i prawy operand
+                op = ctx.children[op_index].getText()
+                right = self.visit(ctx.primaryExpression(i + 1))
+                
+                # Utwórz operację binarną
+                left = BinaryOperation(left, op, right)
+        
+        return left
     
 #           * * * * VARIABLES * * * * 
     def visitVarExpr(self, ctx):
@@ -200,3 +230,8 @@ class ASTBuilder(langVisitor):
         row_index = self.visit(ctx.expression(0))
         col_index = self.visit(ctx.expression(1))
         return ReadStatement(name, row_index, col_index)
+    
+#           * * * * STRING * * * *
+    def visitStringLiteral(self, ctx):
+        value = ctx.STRING().getText()
+        return StringLiteral(value)

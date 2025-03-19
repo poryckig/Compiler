@@ -1,0 +1,53 @@
+// Podstawowe literały stringowe
+string s1 = "Hello";
+string s2 = "World";
+string greeting = "Welcome to my compiler!";
+string empty = "";
+
+// Stringi ze znakami specjalnymi
+string special1 = "Line 1\nLine 2";  // Znak nowej linii
+string special2 = "Tab\tIndented";   // Tabulator
+string special3 = "Quote: \"Text\""; // Cudzysłów
+string special4 = "Backslash: \\";   // Backslash
+
+// Zmienne różnych typów
+int num = 42;
+float pi = 3.14159;
+string text = "Value";
+
+// Wyświetlanie podstawowych stringów
+print s1;
+print s2;
+print greeting;
+print empty; // Pusty string
+
+// Wyświetlanie stringów ze znakami specjalnymi
+print special1;
+print special2;
+print special3;
+print special4;
+
+// Wyświetlanie wartości różnych typów
+print num;    // Liczba całkowita
+print pi;     // Liczba zmiennoprzecinkowa
+print text;   // String
+
+// Testy kombinacji stringów i innych wartości
+print "Number:";
+print num;
+print "Pi:";
+print pi;
+print "Text:";
+print text;
+
+// Testy przypisania i zmian wartości
+string message = "Original message";
+print message;
+message = "Updated message";
+print message;
+
+// Długi string
+string longText = "This is a much longer string that tests the ability of the compiler to handle strings that might span multiple lines or contain a lot of content to see if there are any buffer or memory issues.";
+print longText;
+
+print "End of test.";

@@ -90,3 +90,8 @@ class MatrixAssignment(ASTNode):
         self.row_index = row_index
         self.col_index = col_index
         self.value = value
+        
+#           * * * * STRING * * * *
+class StringLiteral(ASTNode):
+    def __init__(self, value):
+        self.value = value      # Wartość łącznie z cudzysłowami
