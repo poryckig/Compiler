@@ -1,6 +1,8 @@
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 import sys
+from src.actions.declare_generator import visit_VariableDeclaration
+from src.actions.assign_generator import visit_Assignment
 from src.syntax_tree.ast_nodes import *
 from src.IO.IO_nodes import *
 from src.IO.IO_generator import visit_PrintStatement, visit_ReadStatement
@@ -96,70 +98,6 @@ class LLVMGenerator:
         for stmt in node.statements:
             self.visit(stmt)
     
-    def visit_VariableDeclaration(self, node):
-        # Określ typ LLVM na podstawie typu zmiennej
-        if node.var_type == 'int':
-            var_type = self.int_type
-            default_value = ir.Constant(var_type, 0)
-        elif node.var_type == 'float':
-            var_type = self.float_type
-            default_value = ir.Constant(var_type, 0.0)
-        else:
-            raise ValueError(f"Nieznany typ zmiennej: {node.var_type}")
-        
-        # Debugowanie
-        print(f"Deklaracja zmiennej {node.name} typu {var_type}")
-        
-        # Alokuj zmienną na stosie
-        var_ptr = self.builder.alloca(var_type, name=node.name)
-        
-        # Inicjalizuj zmienną zerami
-        self.builder.store(default_value, var_ptr)
-        print(f"Inicjalizacja zmiennej {node.name} zerami")
-        
-        # Zapisz wskaźnik do tablicy symboli
-        self.symbol_table[node.name] = var_ptr
-        
-        # Jeśli jest wartość początkowa, przypisz ją
-        if node.initial_value:
-            print(f"Inicjalizacja zmiennej {node.name}")
-            value = self.visit(node.initial_value)
-            print(f"Wartość początkowa typu {value.type}")
-            
-            # Upewnij się, że typy są zgodne
-            if isinstance(var_type, ir.FloatType) and isinstance(value.type, ir.IntType):
-                value = self.builder.sitofp(value, var_type)
-            elif isinstance(var_type, ir.IntType) and isinstance(value.type, ir.FloatType):
-                value = self.builder.fptosi(value, var_type)
-            
-            self.builder.store(value, var_ptr)
-            print(f"Zmienna {node.name} zainicjalizowana")
-        
-    def visit_Assignment(self, node):
-        """Generuje kod LLVM dla przypisania wartości do zmiennej."""
-        # Pobierz wskaźnik do zmiennej z tablicy symboli
-        if node.name not in self.symbol_table:
-            raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
-        
-        var_ptr = self.symbol_table[node.name]
-        
-        # Oblicz wartość do przypisania
-        value = self.visit(node.value)
-        
-        # Automatyczna konwersja typów, jeśli potrzebna
-        var_type = var_ptr.type.pointee
-        value_type = value.type
-        
-        if isinstance(var_type, ir.IntType) and isinstance(value_type, ir.FloatType):
-            # Konwersja float -> int (utrata precyzji)
-            value = self.builder.fptosi(value, var_type)
-        elif isinstance(var_type, ir.FloatType) and isinstance(value_type, ir.IntType):
-            # Konwersja int -> float
-            value = self.builder.sitofp(value, var_type)
-        
-        # Zapisz wartość do zmiennej
-        self.builder.store(value, var_ptr)
-    
     def visit_BinaryOperation(self, node):
         # Debugowanie
         print(f"Przetwarzanie operacji binarnej: {node.operator}")
@@ -253,6 +191,9 @@ class LLVMGenerator:
         constant = ir.Constant(self.float_type, float_value)
         print(f"Tworzę stałą zmiennoprzecinkową typu: {constant.type}")
         return constant
+
+LLVMGenerator.visit_VariableDeclaration = visit_VariableDeclaration
+LLVMGenerator.visit_Assignment = visit_Assignment
     
 LLVMGenerator.visit_PrintStatement = visit_PrintStatement
 LLVMGenerator.visit_ReadStatement = visit_ReadStatement
