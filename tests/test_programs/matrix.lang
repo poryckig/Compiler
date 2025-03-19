@@ -1,0 +1,32 @@
+// Prosty test macierzy
+int m[3][3] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+float f[2][2] = {{1.5, 2.5}, {3.5, 4.5}};
+
+// Test wypisywania elementów
+print m[0][0];  // Powinno wypisać 1
+print m[1][1];  // Powinno wypisać 5
+print m[2][2];  // Powinno wypisać 9
+print f[0][1];  // Powinno wypisać 2.5
+print f[1][0];  // Powinno wypisać 3.5
+
+// Test przypisania
+m[0][0] = 10;
+m[1][1] = 20;
+m[2][2] = 30;
+print m[0][0];  // Powinno wypisać 10
+print m[1][1];  // Powinno wypisać 20
+print m[2][2];  // Powinno wypisać 30
+
+// Test operacji
+m[0][0] = m[0][0] + m[0][1];  // 10 + 2 = 12
+print m[0][0];  // Powinno wypisać 12
+
+// Test konwersji typów
+f[0][0] = m[0][0];  // int -> float
+print f[0][0];  // Powinno wypisać 12.0
+
+// Test obsługi błędów - dostęp poza zakresem
+print m[3][0];  // Błąd: indeks wiersza poza zakresem
+print m[0][3];  // Błąd: indeks kolumny poza zakresem
+m[3][0] = 100;  // Błąd: indeks wiersza poza zakresem
+m[0][3] = 100;  // Błąd: indeks kolumny poza zakresem

@@ -11,12 +11,18 @@ statement
     ;
 
 variableDeclaration
-    : type ID ('=' expression)?                           # SimpleVarDecl
-    | type ID '[' INT ']' ('=' arrayInitializer)?         # ArrayDecl
+    : type ID ('=' expression)?                          # SimpleVarDecl
+    | type ID '[' INT ']' ('=' arrayInitializer)?        # ArrayDecl
+    | type ID '[' INT ']' '[' INT ']' 
+        ('=' matrixInitializer)?                         # MatrixDecl
     ;
 
 arrayInitializer
     : '{' expression (',' expression)* '}'
+    ;
+
+matrixInitializer
+    : '{' arrayInitializer (',' arrayInitializer)* '}'
     ;
 
 type
@@ -27,6 +33,8 @@ type
 assignment
     : ID '=' expression                                  # SimpleAssign
     | ID '[' expression ']' '=' expression               # ArrayAssign
+    | ID '[' expression ']' '[' expression ']' 
+        '=' expression                                   # MatrixAssign
     ;
 
 printStatement
@@ -36,6 +44,7 @@ printStatement
 readStatement
     : 'read' ID                                          # SimpleRead
     | 'read' ID '[' expression ']'                       # ArrayRead
+    | 'read' ID '[' expression ']' '[' expression ']'    # MatrixRead
     ;
 
 expression
@@ -44,6 +53,7 @@ expression
     | '(' expression ')'                                 # ParenExpr
     | ID                                                 # VarExpr
     | ID '[' expression ']'                              # ArrayAccessExpr
+    | ID '[' expression ']' '[' expression ']'           # MatrixAccessExpr
     | INT                                                # IntLiteral
     | FLOAT                                              # FloatLiteral
     ;

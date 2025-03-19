@@ -2,6 +2,8 @@ import llvmlite.ir as ir
 import llvmlite.binding as llvm
 import sys
 from src.syntax_tree.ast_nodes import *
+from src.matrix.matrix_nodes import *
+from src.matrix.matrix_generator import visit_MatrixDeclaration, visit_MatrixAccess, visit_MatrixAssignment, _emit_matrix_error_message, _check_matrix_bounds_and_store
 
 class LLVMGenerator:
     def __init__(self):
@@ -161,48 +163,118 @@ class LLVMGenerator:
         self.builder.call(self.printf_func, [format_ptr, value])
     
     def visit_ReadStatement(self, node):
-        # Pobierz wskaźnik do zmiennej
-        if node.name not in self.symbol_table:
-            raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
-        
-        var_ptr = self.symbol_table[node.name]
-        
-        # Określ format na podstawie typu zmiennej
-        var_type = var_ptr.type.pointee
-        
-        # Debugowanie
-        print(f"Typ zmiennej {node.name}: {var_type}")
-        
-        if isinstance(var_type, ir.IntType):
-            format_str = "%d\0"  # Format dla liczb całkowitych
-        elif isinstance(var_type, ir.FloatType):
-            format_str = "%f\0"  # Format dla liczb zmiennoprzecinkowych
+        """Generuje kod LLVM dla instrukcji read."""
+        # Sprawdź typ odczytu - zmienna, tablica czy macierz
+        if hasattr(node, 'row_index') and node.row_index is not None and hasattr(node, 'col_index') and node.col_index is not None:
+            # Odczyt do elementu macierzy
+            if node.name not in self.symbol_table:
+                raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
+            
+            matrix_info = self.symbol_table[node.name]
+            if not isinstance(matrix_info, tuple) or len(matrix_info) != 4:
+                raise ValueError(f"Zmienna {node.name} nie jest macierzą")
+            
+            matrix_ptr, element_type, rows, cols = matrix_info
+            
+            # Oblicz indeksy
+            row_index = self.visit(node.row_index)
+            col_index = self.visit(node.col_index)
+            
+            # Sprawdź zakresy
+            rows_const = ir.Constant(self.int_type, rows)
+            cols_const = ir.Constant(self.int_type, cols)
+            
+            # Tworzenie bloków dla sprawdzania zakresu
+            current_block = self.builder.block
+            row_check_block = self.builder.append_basic_block(name=f"{node.name}_read_row_check")
+            row_in_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_row_in_bounds")
+            row_out_of_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_row_out_of_bounds")
+            col_check_block = self.builder.append_basic_block(name=f"{node.name}_read_col_check")
+            col_in_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_col_in_bounds")
+            col_out_of_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_col_out_of_bounds")
+            merge_block = self.builder.append_basic_block(name=f"{node.name}_read_merge")
+            
+            # Przejdź do bloku sprawdzania wiersza
+            self.builder.branch(row_check_block)
+            self.builder.position_at_end(row_check_block)
+            
+            # Sprawdź czy indeks wiersza < rows
+            is_row_too_large = self.builder.icmp_signed('>=', row_index, rows_const)
+            self.builder.cbranch(is_row_too_large, row_out_of_bounds_block, row_in_bounds_block)
+            
+            # Obsługa przypadku poza zakresem wiersza
+            self.builder.position_at_end(row_out_of_bounds_block)
+            self._emit_matrix_error_message(
+                node.name, 
+                "Error: Row index out of range in matrix read '%s' [0-%d][0-%d]\n\0", 
+                row_index, rows, cols
+            )
+            self.builder.branch(merge_block)
+            
+            # Obsługa przypadku w zakresie wiersza
+            self.builder.position_at_end(row_in_bounds_block)
+            self.builder.branch(col_check_block)
+            
+            # Sprawdzanie kolumny
+            self.builder.position_at_end(col_check_block)
+            is_col_too_large = self.builder.icmp_signed('>=', col_index, cols_const)
+            self.builder.cbranch(is_col_too_large, col_out_of_bounds_block, col_in_bounds_block)
+            
+            # Obsługa przypadku poza zakresem kolumny
+            self.builder.position_at_end(col_out_of_bounds_block)
+            self._emit_matrix_error_message(
+                node.name, 
+                "Error: Column index out of range in matrix read '%s' [0-%d][0-%d]\n\0", 
+                col_index, rows, cols
+            )
+            self.builder.branch(merge_block)
+            
+            # Obsługa przypadku w zakresie kolumny
+            self.builder.position_at_end(col_in_bounds_block)
+            
+            # Odczyt z stdin do elementu macierzy
+            zero = ir.Constant(self.int_type, 0)
+            row_ptr = self.builder.gep(matrix_ptr, [zero, row_index], name=f"{node.name}_read_row")
+            element_ptr = self.builder.gep(row_ptr, [zero, col_index], name=f"{node.name}_read_elem")
+            
+            # Określ format na podstawie typu elementu
+            if isinstance(element_type, ir.IntType):
+                format_str = "%d\0"  # Format dla liczb całkowitych
+            elif isinstance(element_type, ir.FloatType):
+                format_str = "%f\0"  # Format dla liczb zmiennoprzecinkowych
+            else:
+                raise ValueError(f"Nieobsługiwany typ dla operacji read: {element_type}")
+            
+            # Tworzymy globalną zmienną dla format stringa
+            c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_str)), 
+                                    bytearray(format_str.encode("utf8")))
+            
+            # Generuj unikalną nazwę
+            format_count = sum(1 for g in self.module.global_values 
+                            if hasattr(g, 'name') and g.name.startswith(".str.scanf.matrix"))
+            
+            global_format = ir.GlobalVariable(self.module, c_format_str.type, 
+                                            name=f".str.scanf.matrix.{format_count}")
+            global_format.linkage = 'internal'
+            global_format.global_constant = True
+            global_format.initializer = c_format_str
+            
+            # Konwertuj wskaźnik do formatu do i8*
+            format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
+            
+            # Wywołaj scanf
+            self.builder.call(self.scanf_func, [format_ptr, element_ptr])
+            self.builder.branch(merge_block)
+            
+            # Blok łączący
+            self.builder.position_at_end(merge_block)
+            
+        elif hasattr(node, 'index') and node.index is not None:
+            # Tutaj istniejący kod dla obsługi tablic, który już masz
+            pass
         else:
-            # Awaryjnie użyj int jako domyślnego typu
-            print(f"UWAGA: Nierozpoznany typ {var_type}, używam formatu %d")
-            format_str = "%d\0"
-        
-        # Tworzymy globalną zmienną dla format stringa
-        c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_str)), 
-                                bytearray(format_str.encode("utf8")))
-        
-        # Generuj unikalną nazwę na podstawie liczby istniejących zmiennych
-        format_count = 0
-        for g in self.module.global_values:
-            if hasattr(g, 'name') and g.name.startswith(".str.scanf"):
-                format_count += 1
-        
-        global_format = ir.GlobalVariable(self.module, c_format_str.type, 
-                                         name=f".str.scanf.{format_count}")
-        global_format.linkage = 'internal'
-        global_format.global_constant = True
-        global_format.initializer = c_format_str
-        
-        # Konwertuj wskaźnik do formatu do i8*
-        format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
-        
-        # Wywołaj scanf
-        self.builder.call(self.scanf_func, [format_ptr, var_ptr])
+            # Tutaj istniejący kod dla obsługi zwykłych zmiennych, który już masz
+            pass
     
     def visit_BinaryOperation(self, node):
         # Debugowanie
@@ -515,3 +587,9 @@ class LLVMGenerator:
         
         # Blok łączący
         self.builder.position_at_end(merge_block)
+        
+LLVMGenerator.visit_MatrixDeclaration = visit_MatrixDeclaration
+LLVMGenerator.visit_MatrixAccess = visit_MatrixAccess
+LLVMGenerator.visit_MatrixAssignment = visit_MatrixAssignment
+LLVMGenerator._emit_matrix_error_message = _emit_matrix_error_message
+LLVMGenerator._check_matrix_bounds_and_store = _check_matrix_bounds_and_store

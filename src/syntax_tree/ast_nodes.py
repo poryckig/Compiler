@@ -21,9 +21,12 @@ class PrintStatement(ASTNode):
         self.expression = expression
 
 class ReadStatement(ASTNode):
-    def __init__(self, name):
+    def __init__(self, name, row_index=None, col_index=None, index=None):
         self.name = name
-
+        self.row_index = row_index
+        self.col_index = col_index
+        self.index = index      # For array access
+              
 class BinaryOperation(ASTNode):
     def __init__(self, left, operator, right):
         self.left = left
