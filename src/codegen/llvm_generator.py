@@ -1,14 +1,15 @@
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 import sys
+from src.syntax_tree.ast_nodes import *
+from src.variables.variable_generator import visit_Variable
+from src.variables.integer_generator import visit_IntegerLiteral
+from src.variables.float_generator import visit_FloatLiteral
 from src.actions.declare_generator import visit_VariableDeclaration
 from src.actions.assign_generator import visit_Assignment
-from src.syntax_tree.ast_nodes import *
-from src.IO.IO_nodes import *
+from src.actions.operations.binary_operation_generator import visit_BinaryOperation
 from src.IO.IO_generator import visit_PrintStatement, visit_ReadStatement
-from src.array.array_nodes import *
 from src.array.array_generator import visit_ArrayDeclaration, visit_ArrayAccess, visit_ArrayAssignment
-from src.matrix.matrix_nodes import *
 from src.matrix.matrix_generator import visit_MatrixDeclaration, visit_MatrixAccess, visit_MatrixAssignment, _emit_matrix_error_message, _check_matrix_bounds_and_store
 
 class LLVMGenerator:
@@ -97,103 +98,15 @@ class LLVMGenerator:
         # Odwiedź wszystkie instrukcje programu
         for stmt in node.statements:
             self.visit(stmt)
-    
-    def visit_BinaryOperation(self, node):
-        # Debugowanie
-        print(f"Przetwarzanie operacji binarnej: {node.operator}")
-        
-        # Oblicz wartości lewego i prawego operandu
-        left = self.visit(node.left)
-        right = self.visit(node.right)
-        
-        print(f"Typ wartości lewej: {left.type}")
-        print(f"Typ wartości prawej: {right.type}")
-        
-        # Sprawdź typy operandów
-        is_float_operation = isinstance(left.type, ir.FloatType) or isinstance(right.type, ir.FloatType)
-        print(f"Czy operacja zmiennoprzecinkowa: {is_float_operation}")
-        
-        # Jeśli jeden z operandów jest float, konwertuj drugi też na float
-        if is_float_operation:
-            if isinstance(left.type, ir.IntType):
-                print(f"Konwersja: int -> float (lewy operand)")
-                left = self.builder.sitofp(left, self.float_type)
-            if isinstance(right.type, ir.IntType):
-                print(f"Konwersja: int -> float (prawy operand)")
-                right = self.builder.sitofp(right, self.float_type)
-        
-            # Upewnij się, że oba operandy mają ten sam typ
-            print(f"Typy po konwersji - lewy: {left.type}, prawy: {right.type}")
-        
-        # Wykonaj odpowiednią operację w zależności od operatora i typu
-        if node.operator == '+':
-            if is_float_operation:
-                print("Wykonywanie operacji fadd")
-                result = self.builder.fadd(left, right)
-            else:
-                print("Wykonywanie operacji add")
-                result = self.builder.add(left, right)
-        elif node.operator == '-':
-            if is_float_operation:
-                print("Wykonywanie operacji fsub")
-                result = self.builder.fsub(left, right)
-            else:
-                print("Wykonywanie operacji sub")
-                result = self.builder.sub(left, right)
-        elif node.operator == '*':
-            if is_float_operation:
-                print("Wykonywanie operacji fmul")
-                result = self.builder.fmul(left, right)
-            else:
-                print("Wykonywanie operacji mul")
-                result = self.builder.mul(left, right)
-        elif node.operator == '/':
-            if is_float_operation:
-                print("Wykonywanie operacji fdiv")
-                result = self.builder.fdiv(left, right)
-            else:
-                print("Wykonywanie operacji sdiv")
-                result = self.builder.sdiv(left, right)
-        else:
-            raise ValueError(f"Nieznany operator: {node.operator}")
-        
-        print(f"Typ wyniku operacji: {result.type}")
-        return result
-    
-    def visit_Variable(self, node):
-        # Pobierz wskaźnik do zmiennej
-        if node.name not in self.symbol_table:
-            raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
-        
-        var_ptr = self.symbol_table[node.name]
-        
-        # Debugowanie
-        print(f"Odczytywanie zmiennej {node.name} typu {var_ptr.type.pointee}")
-        
-        # Wczytaj wartość ze zmiennej
-        loaded_value = self.builder.load(var_ptr, name=f"{node.name}_val")
-        print(f"Wczytana wartość typu: {loaded_value.type}")
-        return loaded_value
-    
-    def visit_IntegerLiteral(self, node):
-        # Zwróć stałą całkowitą
-        return ir.Constant(self.int_type, node.value)
-    
-    def visit_FloatLiteral(self, node):
-        # Debugowanie
-        print(f"Tworzenie literału zmiennoprzecinkowego: {node.value}")
-        
-        # Konwersja do poprawnej wartości float
-        float_value = float(node.value)
-        print(f"Wartość po konwersji: {float_value}")
-        
-        # Zwróć stałą zmiennoprzecinkową
-        constant = ir.Constant(self.float_type, float_value)
-        print(f"Tworzę stałą zmiennoprzecinkową typu: {constant.type}")
-        return constant
+
+LLVMGenerator.visit_Variable = visit_Variable
+LLVMGenerator.visit_IntegerLiteral = visit_IntegerLiteral
+LLVMGenerator.visit_FloatLiteral = visit_FloatLiteral
 
 LLVMGenerator.visit_VariableDeclaration = visit_VariableDeclaration
 LLVMGenerator.visit_Assignment = visit_Assignment
+
+LLVMGenerator.visit_BinaryOperation = visit_BinaryOperation
     
 LLVMGenerator.visit_PrintStatement = visit_PrintStatement
 LLVMGenerator.visit_ReadStatement = visit_ReadStatement
