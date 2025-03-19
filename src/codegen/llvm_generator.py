@@ -2,6 +2,8 @@ import llvmlite.ir as ir
 import llvmlite.binding as llvm
 import sys
 from src.syntax_tree.ast_nodes import *
+from src.IO.IO_nodes import *
+from src.IO.IO_generator import visit_PrintStatement, visit_ReadStatement
 from src.array.array_nodes import *
 from src.array.array_generator import visit_ArrayDeclaration, visit_ArrayAccess, visit_ArrayAssignment
 from src.matrix.matrix_nodes import *
@@ -24,17 +26,27 @@ class LLVMGenerator:
         # Przygotowanie typów
         self.int_type = ir.IntType(32)
         self.float_type = ir.FloatType()
-        self.double_type = ir.DoubleType()  # Dodaj typ double
+        self.double_type = ir.DoubleType()
         self.void_type = ir.VoidType()
         
         # Słownik zmiennych (symbol table)
         self.symbol_table = {}
+        
+        # Licznik dla unikalnych identyfikatorów
+        self._global_counter = self._make_counter()
         
         # Funkcja main
         self.setup_main_function()
         
         # Deklaracja funkcji printf i scanf
         self.declare_external_functions()
+
+    def _make_counter(self):
+        """Pomocnicza funkcja do generowania unikalnych identyfikatorów."""
+        counter = 0
+        while True:
+            yield counter
+            counter += 1
     
     def setup_main_function(self):
         # Definicja funkcji main
@@ -113,176 +125,44 @@ class LLVMGenerator:
             print(f"Inicjalizacja zmiennej {node.name}")
             value = self.visit(node.initial_value)
             print(f"Wartość początkowa typu {value.type}")
+            
+            # Upewnij się, że typy są zgodne
+            if isinstance(var_type, ir.FloatType) and isinstance(value.type, ir.IntType):
+                value = self.builder.sitofp(value, var_type)
+            elif isinstance(var_type, ir.IntType) and isinstance(value.type, ir.FloatType):
+                value = self.builder.fptosi(value, var_type)
+            
             self.builder.store(value, var_ptr)
             print(f"Zmienna {node.name} zainicjalizowana")
-    
+        
     def visit_Assignment(self, node):
+        """Generuje kod LLVM dla przypisania wartości do zmiennej."""
         # Pobierz wskaźnik do zmiennej z tablicy symboli
         if node.name not in self.symbol_table:
             raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
         
         var_ptr = self.symbol_table[node.name]
         
-        # Oblicz i przypisz wartość
+        # Oblicz wartość do przypisania
         value = self.visit(node.value)
+        
+        # Automatyczna konwersja typów, jeśli potrzebna
+        var_type = var_ptr.type.pointee
+        value_type = value.type
+        
+        if isinstance(var_type, ir.IntType) and isinstance(value_type, ir.FloatType):
+            # Konwersja float -> int (utrata precyzji)
+            value = self.builder.fptosi(value, var_type)
+        elif isinstance(var_type, ir.FloatType) and isinstance(value_type, ir.IntType):
+            # Konwersja int -> float
+            value = self.builder.sitofp(value, var_type)
+        
+        # Zapisz wartość do zmiennej
         self.builder.store(value, var_ptr)
-    
-    def visit_PrintStatement(self, node):
-        # Oblicz wartość do wydrukowania
-        value = self.visit(node.expression)
-        
-        # Format strings
-        int_format = "%d\n"
-        float_format = "%.1f\n"
-        
-        # Wybierz format w zależności od typu wartości
-        if isinstance(value.type, ir.FloatType):
-            format_str = float_format
-            # Konwersja z float na double dla printf
-            value = self.builder.fpext(value, ir.DoubleType())
-        else:
-            format_str = int_format
-        
-        # Stwórz globalną stałą dla formatu
-        format_bytes = format_str.encode("ascii")
-        c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_bytes)), 
-                            bytearray(format_bytes))
-        
-        # Generuj unikalną nazwę
-        format_count = sum(1 for g in self.module.global_values 
-                        if hasattr(g, 'name') and g.name.startswith(".format"))
-        
-        global_format = ir.GlobalVariable(self.module, c_format_str.type, 
-                                        name=f".format.{format_count}")
-        global_format.linkage = 'internal'
-        global_format.global_constant = True
-        global_format.initializer = c_format_str
-        
-        # Konwertuj wskaźnik do formatu do i8*
-        format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
-        
-        # Wywołaj printf
-        self.builder.call(self.printf_func, [format_ptr, value])
-    
-    def visit_ReadStatement(self, node):
-        """Generuje kod LLVM dla instrukcji read."""
-        # Sprawdź typ odczytu - zmienna, tablica czy macierz
-        if hasattr(node, 'row_index') and node.row_index is not None and hasattr(node, 'col_index') and node.col_index is not None:
-            # Odczyt do elementu macierzy
-            if node.name not in self.symbol_table:
-                raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
-            
-            matrix_info = self.symbol_table[node.name]
-            if not isinstance(matrix_info, tuple) or len(matrix_info) != 4:
-                raise ValueError(f"Zmienna {node.name} nie jest macierzą")
-            
-            matrix_ptr, element_type, rows, cols = matrix_info
-            
-            # Oblicz indeksy
-            row_index = self.visit(node.row_index)
-            col_index = self.visit(node.col_index)
-            
-            # Sprawdź zakresy
-            rows_const = ir.Constant(self.int_type, rows)
-            cols_const = ir.Constant(self.int_type, cols)
-            
-            # Tworzenie bloków dla sprawdzania zakresu
-            current_block = self.builder.block
-            row_check_block = self.builder.append_basic_block(name=f"{node.name}_read_row_check")
-            row_in_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_row_in_bounds")
-            row_out_of_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_row_out_of_bounds")
-            col_check_block = self.builder.append_basic_block(name=f"{node.name}_read_col_check")
-            col_in_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_col_in_bounds")
-            col_out_of_bounds_block = self.builder.append_basic_block(name=f"{node.name}_read_col_out_of_bounds")
-            merge_block = self.builder.append_basic_block(name=f"{node.name}_read_merge")
-            
-            # Przejdź do bloku sprawdzania wiersza
-            self.builder.branch(row_check_block)
-            self.builder.position_at_end(row_check_block)
-            
-            # Sprawdź czy indeks wiersza < rows
-            is_row_too_large = self.builder.icmp_signed('>=', row_index, rows_const)
-            self.builder.cbranch(is_row_too_large, row_out_of_bounds_block, row_in_bounds_block)
-            
-            # Obsługa przypadku poza zakresem wiersza
-            self.builder.position_at_end(row_out_of_bounds_block)
-            self._emit_matrix_error_message(
-                node.name, 
-                "Error: Row index out of range in matrix read '%s' [0-%d][0-%d]\n\0", 
-                row_index, rows, cols
-            )
-            self.builder.branch(merge_block)
-            
-            # Obsługa przypadku w zakresie wiersza
-            self.builder.position_at_end(row_in_bounds_block)
-            self.builder.branch(col_check_block)
-            
-            # Sprawdzanie kolumny
-            self.builder.position_at_end(col_check_block)
-            is_col_too_large = self.builder.icmp_signed('>=', col_index, cols_const)
-            self.builder.cbranch(is_col_too_large, col_out_of_bounds_block, col_in_bounds_block)
-            
-            # Obsługa przypadku poza zakresem kolumny
-            self.builder.position_at_end(col_out_of_bounds_block)
-            self._emit_matrix_error_message(
-                node.name, 
-                "Error: Column index out of range in matrix read '%s' [0-%d][0-%d]\n\0", 
-                col_index, rows, cols
-            )
-            self.builder.branch(merge_block)
-            
-            # Obsługa przypadku w zakresie kolumny
-            self.builder.position_at_end(col_in_bounds_block)
-            
-            # Odczyt z stdin do elementu macierzy
-            zero = ir.Constant(self.int_type, 0)
-            row_ptr = self.builder.gep(matrix_ptr, [zero, row_index], name=f"{node.name}_read_row")
-            element_ptr = self.builder.gep(row_ptr, [zero, col_index], name=f"{node.name}_read_elem")
-            
-            # Określ format na podstawie typu elementu
-            if isinstance(element_type, ir.IntType):
-                format_str = "%d\0"  # Format dla liczb całkowitych
-            elif isinstance(element_type, ir.FloatType):
-                format_str = "%f\0"  # Format dla liczb zmiennoprzecinkowych
-            else:
-                raise ValueError(f"Nieobsługiwany typ dla operacji read: {element_type}")
-            
-            # Tworzymy globalną zmienną dla format stringa
-            c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_str)), 
-                                    bytearray(format_str.encode("utf8")))
-            
-            # Generuj unikalną nazwę
-            format_count = sum(1 for g in self.module.global_values 
-                            if hasattr(g, 'name') and g.name.startswith(".str.scanf.matrix"))
-            
-            global_format = ir.GlobalVariable(self.module, c_format_str.type, 
-                                            name=f".str.scanf.matrix.{format_count}")
-            global_format.linkage = 'internal'
-            global_format.global_constant = True
-            global_format.initializer = c_format_str
-            
-            # Konwertuj wskaźnik do formatu do i8*
-            format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
-            
-            # Wywołaj scanf
-            self.builder.call(self.scanf_func, [format_ptr, element_ptr])
-            self.builder.branch(merge_block)
-            
-            # Blok łączący
-            self.builder.position_at_end(merge_block)
-            
-        elif hasattr(node, 'index') and node.index is not None:
-            # Tutaj istniejący kod dla obsługi tablic, który już masz
-            pass
-        else:
-            # Tutaj istniejący kod dla obsługi zwykłych zmiennych, który już masz
-            pass
     
     def visit_BinaryOperation(self, node):
         # Debugowanie
         print(f"Przetwarzanie operacji binarnej: {node.operator}")
-        print(f"Typ lewego operandu: {type(node.left).__name__}")
-        print(f"Typ prawego operandu: {type(node.right).__name__}")
         
         # Oblicz wartości lewego i prawego operandu
         left = self.visit(node.left)
@@ -304,19 +184,38 @@ class LLVMGenerator:
                 print(f"Konwersja: int -> float (prawy operand)")
                 right = self.builder.sitofp(right, self.float_type)
         
+            # Upewnij się, że oba operandy mają ten sam typ
+            print(f"Typy po konwersji - lewy: {left.type}, prawy: {right.type}")
+        
         # Wykonaj odpowiednią operację w zależności od operatora i typu
         if node.operator == '+':
-            result = self.builder.fadd(left, right) if is_float_operation else self.builder.add(left, right)
-            print("Wykonywanie operacji fadd" if is_float_operation else "Wykonywanie operacji add")
+            if is_float_operation:
+                print("Wykonywanie operacji fadd")
+                result = self.builder.fadd(left, right)
+            else:
+                print("Wykonywanie operacji add")
+                result = self.builder.add(left, right)
         elif node.operator == '-':
-            result = self.builder.fsub(left, right) if is_float_operation else self.builder.sub(left, right)
-            print("Wykonywanie operacji fsub" if is_float_operation else "Wykonywanie operacji sub")
+            if is_float_operation:
+                print("Wykonywanie operacji fsub")
+                result = self.builder.fsub(left, right)
+            else:
+                print("Wykonywanie operacji sub")
+                result = self.builder.sub(left, right)
         elif node.operator == '*':
-            result = self.builder.fmul(left, right) if is_float_operation else self.builder.mul(left, right)
-            print("Wykonywanie operacji fmul" if is_float_operation else "Wykonywanie operacji mul")
+            if is_float_operation:
+                print("Wykonywanie operacji fmul")
+                result = self.builder.fmul(left, right)
+            else:
+                print("Wykonywanie operacji mul")
+                result = self.builder.mul(left, right)
         elif node.operator == '/':
-            result = self.builder.fdiv(left, right) if is_float_operation else self.builder.sdiv(left, right)
-            print("Wykonywanie operacji fdiv" if is_float_operation else "Wykonywanie operacji sdiv")
+            if is_float_operation:
+                print("Wykonywanie operacji fdiv")
+                result = self.builder.fdiv(left, right)
+            else:
+                print("Wykonywanie operacji sdiv")
+                result = self.builder.sdiv(left, right)
         else:
             raise ValueError(f"Nieznany operator: {node.operator}")
         
@@ -354,6 +253,9 @@ class LLVMGenerator:
         constant = ir.Constant(self.float_type, float_value)
         print(f"Tworzę stałą zmiennoprzecinkową typu: {constant.type}")
         return constant
+    
+LLVMGenerator.visit_PrintStatement = visit_PrintStatement
+LLVMGenerator.visit_ReadStatement = visit_ReadStatement
     
 LLVMGenerator.visit_ArrayDeclaration = visit_ArrayDeclaration
 LLVMGenerator.visit_ArrayAccess = visit_ArrayAccess

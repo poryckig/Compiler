@@ -2,6 +2,7 @@ from antlr4 import ParseTreeVisitor
 from src.parser.generated.langParser import langParser
 from src.parser.generated.langVisitor import langVisitor
 from src.syntax_tree.ast_nodes import *
+from src.IO.IO_nodes import *
 from src.array.array_nodes import *
 from src.matrix.matrix_nodes import *
 
@@ -87,7 +88,7 @@ class ASTBuilder(langVisitor):
         # Jeśli żaden z powyższych przypadków nie pasuje, 
         # delegujemy do standardowej implementacji
         return self.visitChildren(ctx)
-    ###############################################
+
     def visitSimpleVarDecl(self, ctx):
         var_type = ctx.type_().getText()
         name = ctx.ID().getText()
@@ -98,40 +99,10 @@ class ASTBuilder(langVisitor):
         
         return VariableDeclaration(var_type, name, initial_value)
 
-    def visitArrayDecl(self, ctx):
-        var_type = ctx.type_().getText()
-        name = ctx.ID().getText()
-        size = int(ctx.INT().getText())
-        
-        initial_values = []
-        if ctx.arrayInitializer():
-            # Odwiedź wszystkie wyrażenia w inicjalizatorze
-            for expr_ctx in ctx.arrayInitializer().expression():
-                initial_values.append(self.visit(expr_ctx))
-        
-        return ArrayDeclaration(var_type, name, size, initial_values)
-
-    def visitArrayInitializer(self, ctx):
-        values = []
-        for expr_ctx in ctx.expression():
-            values.append(self.visit(expr_ctx))
-        return values
-
     def visitSimpleAssign(self, ctx):
         name = ctx.ID().getText()
         value = self.visit(ctx.expression())
         return Assignment(name, value)
-
-    def visitArrayAssign(self, ctx):
-        name = ctx.ID().getText()
-        index = self.visit(ctx.expression(0))
-        value = self.visit(ctx.expression(1))
-        return ArrayAssignment(name, index, value)
-
-    def visitArrayAccessExpr(self, ctx):
-        name = ctx.ID().getText()
-        index = self.visit(ctx.expression())
-        return ArrayAccess(name, index)
 
     # Zaktualizuj pozostałe metody dla wyrażeń
     def visitMulDivExpr(self, ctx):
@@ -160,6 +131,36 @@ class ASTBuilder(langVisitor):
     def visitFloatLiteral(self, ctx):
         value = float(ctx.FLOAT().getText())
         return FloatLiteral(value)
+    
+    def visitArrayDecl(self, ctx):
+        var_type = ctx.type_().getText()
+        name = ctx.ID().getText()
+        size = int(ctx.INT().getText())
+        
+        initial_values = []
+        if ctx.arrayInitializer():
+            # Odwiedź wszystkie wyrażenia w inicjalizatorze
+            for expr_ctx in ctx.arrayInitializer().expression():
+                initial_values.append(self.visit(expr_ctx))
+        
+        return ArrayDeclaration(var_type, name, size, initial_values)
+    
+    def visitArrayInitializer(self, ctx):
+        values = []
+        for expr_ctx in ctx.expression():
+            values.append(self.visit(expr_ctx))
+        return values
+    
+    def visitArrayAssign(self, ctx):
+        name = ctx.ID().getText()
+        index = self.visit(ctx.expression(0))
+        value = self.visit(ctx.expression(1))
+        return ArrayAssignment(name, index, value)
+
+    def visitArrayAccessExpr(self, ctx):
+        name = ctx.ID().getText()
+        index = self.visit(ctx.expression())
+        return ArrayAccess(name, index)
     
     def visitMatrixDecl(self, ctx):
         var_type = ctx.type_().getText()
