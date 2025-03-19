@@ -2,6 +2,7 @@ from antlr4 import ParseTreeVisitor
 from src.parser.generated.langParser import langParser
 from src.parser.generated.langVisitor import langVisitor
 from src.syntax_tree.ast_nodes import *
+from src.matrix.matrix_nodes import *
 
 class ASTBuilder(langVisitor):
     def __init__(self):
@@ -158,3 +159,39 @@ class ASTBuilder(langVisitor):
     def visitFloatLiteral(self, ctx):
         value = float(ctx.FLOAT().getText())
         return FloatLiteral(value)
+    
+    def visitMatrixDecl(self, ctx):
+        var_type = ctx.type_().getText()
+        name = ctx.ID().getText()
+        rows = int(ctx.INT(0).getText())
+        cols = int(ctx.INT(1).getText())
+        
+        initial_values = []
+        if ctx.matrixInitializer():
+            # Odwiedź wszystkie wyrażenia inicjalizujące
+            for row_ctx in ctx.matrixInitializer().arrayInitializer():
+                row_values = []
+                for expr_ctx in row_ctx.expression():
+                    row_values.append(self.visit(expr_ctx))
+                initial_values.append(row_values)
+        
+        return MatrixDeclaration(var_type, name, rows, cols, initial_values)
+
+    def visitMatrixAccessExpr(self, ctx):
+        name = ctx.ID().getText()
+        row_index = self.visit(ctx.expression(0))
+        col_index = self.visit(ctx.expression(1))
+        return MatrixAccess(name, row_index, col_index)
+
+    def visitMatrixAssign(self, ctx):
+        name = ctx.ID().getText()
+        row_index = self.visit(ctx.expression(0))
+        col_index = self.visit(ctx.expression(1))
+        value = self.visit(ctx.expression(2))
+        return MatrixAssignment(name, row_index, col_index, value)
+
+    def visitMatrixRead(self, ctx):
+        name = ctx.ID().getText()
+        row_index = self.visit(ctx.expression(0))
+        col_index = self.visit(ctx.expression(1))
+        return ReadStatement(name, row_index, col_index)
