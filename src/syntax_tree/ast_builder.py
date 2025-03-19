@@ -2,6 +2,7 @@ from antlr4 import ParseTreeVisitor
 from src.parser.generated.langParser import langParser
 from src.parser.generated.langVisitor import langVisitor
 from src.syntax_tree.ast_nodes import *
+from src.array.array_nodes import *
 from src.matrix.matrix_nodes import *
 
 class ASTBuilder(langVisitor):
@@ -88,7 +89,7 @@ class ASTBuilder(langVisitor):
         return self.visitChildren(ctx)
     ###############################################
     def visitSimpleVarDecl(self, ctx):
-        var_type = ctx.type_().getText()  # Zmiana z ctx.type() na ctx.type_()
+        var_type = ctx.type_().getText()
         name = ctx.ID().getText()
         
         initial_value = None
@@ -98,7 +99,7 @@ class ASTBuilder(langVisitor):
         return VariableDeclaration(var_type, name, initial_value)
 
     def visitArrayDecl(self, ctx):
-        var_type = ctx.type_().getText()  # Zmiana z ctx.type() na ctx.type_()
+        var_type = ctx.type_().getText()
         name = ctx.ID().getText()
         size = int(ctx.INT().getText())
         
