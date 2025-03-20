@@ -18,6 +18,18 @@ def visit_BinaryOperation(self, node):
     print(f"Typ wartości lewej: {left.type}")
     print(f"Typ wartości prawej: {right.type}")
     
+    # Upewnij się, że lewy operand nie jest wskaźnikiem do wartości
+    if isinstance(left.type, ir.PointerType) and not (isinstance(left.type.pointee, ir.IntType) and left.type.pointee.width == 8):
+        # Załaduj wartość ze wskaźnika
+        left = self.builder.load(left)
+        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
+    
+    # Upewnij się, że prawy operand nie jest wskaźnikiem do wartości
+    if isinstance(right.type, ir.PointerType) and not (isinstance(right.type.pointee, ir.IntType) and right.type.pointee.width == 8):
+        # Załaduj wartość ze wskaźnika
+        right = self.builder.load(right)
+        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
+    
     # Sprawdź typy operandów
     is_float_operation = isinstance(left.type, ir.FloatType) or isinstance(right.type, ir.FloatType)
     
@@ -29,6 +41,22 @@ def visit_BinaryOperation(self, node):
         return left
     
     print(f"Czy operacja zmiennoprzecinkowa: {is_float_operation}")
+    
+    # Operator XOR
+    if node.operator == '^' or node.operator == 'xor':
+        # Konwersja do typu bool (i1) jeśli potrzebna
+        if isinstance(left.type, ir.FloatType):
+            left = self.builder.fcmp_ordered('!=', left, ir.Constant(left.type, 0.0))
+        elif not isinstance(left.type, ir.IntType) or left.type.width != 1:
+            left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
+            
+        if isinstance(right.type, ir.FloatType):
+            right = self.builder.fcmp_ordered('!=', right, ir.Constant(right.type, 0.0))
+        elif not isinstance(right.type, ir.IntType) or right.type.width != 1:
+            right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
+        
+        # XOR dla wartości boolowskich
+        return self.builder.xor(left, right)
     
     # Operatory porównania
     if node.operator == '==':
@@ -152,19 +180,6 @@ def visit_BinaryOperation(self, node):
             # Wykonaj dzielenie całkowitoliczbowe
             print("Wykonywanie operacji sdiv")
             result = self.builder.sdiv(left, right)
-    elif node.operator == 'xor' or node.operator == '^':
-        # Konwersja do bool jeśli potrzebna
-        if not isinstance(left.type, ir.IntType):
-            left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
-        if not isinstance(right.type, ir.IntType):
-            right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
-            
-        # Jeśli to boolowskie wartości, możemy użyć XOR bezpośrednio
-        if left.type.width == 1 and right.type.width == 1:
-            result = self.builder.xor(left, right)
-        else:
-            # Dla innych wartości całkowitych możemy też użyć XOR
-            result = self.builder.xor(left, right)
     else:
         raise ValueError(f"Nieznany operator: {node.operator}")
     
@@ -176,11 +191,18 @@ def _generate_short_circuit_and(self, left_node, right_node):
     # Pobranie pierwszego operandu
     left = self.visit(left_node)
     
+    # Upewnij się, że lewy operand nie jest wskaźnikiem
+    if isinstance(left.type, ir.PointerType) and not (isinstance(left.type.pointee, ir.IntType) and left.type.pointee.width == 8):
+        left = self.builder.load(left)
+        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
+        
     # Short-circuit AND evaluation - jeśli lewy operand jest false,
     # nie musimy oceniać prawego operandu
     
     # Konwersja do typu bool (i1) jeśli potrzebna
-    if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+    if isinstance(left.type, ir.FloatType):
+        left = self.builder.fcmp_ordered('!=', left, ir.Constant(left.type, 0.0))
+    elif not isinstance(left.type, ir.IntType) or left.type.width != 1:
         left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
     
     # Tworzenie bloków dla implementacji short-circuit
@@ -195,8 +217,15 @@ def _generate_short_circuit_and(self, left_node, right_node):
     self.builder.position_at_end(right_operand_block)
     right = self.visit(right_node)
     
+    # Upewnij się, że prawy operand nie jest wskaźnikiem
+    if isinstance(right.type, ir.PointerType) and not (isinstance(right.type.pointee, ir.IntType) and right.type.pointee.width == 8):
+        right = self.builder.load(right)
+        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
+    
     # Konwersja do typu bool (i1) jeśli potrzebna
-    if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+    if isinstance(right.type, ir.FloatType):
+        right = self.builder.fcmp_ordered('!=', right, ir.Constant(right.type, 0.0))
+    elif not isinstance(right.type, ir.IntType) or right.type.width != 1:
         right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
     
     # Przejście do bloku łączącego
@@ -218,11 +247,18 @@ def _generate_short_circuit_or(self, left_node, right_node):
     # Pobranie pierwszego operandu
     left = self.visit(left_node)
     
+    # Upewnij się, że lewy operand nie jest wskaźnikiem
+    if isinstance(left.type, ir.PointerType) and not (isinstance(left.type.pointee, ir.IntType) and left.type.pointee.width == 8):
+        left = self.builder.load(left)
+        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
+    
     # Short-circuit OR evaluation - jeśli lewy operand jest true,
     # nie musimy oceniać prawego operandu
     
     # Konwersja do typu bool (i1) jeśli potrzebna
-    if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+    if isinstance(left.type, ir.FloatType):
+        left = self.builder.fcmp_ordered('!=', left, ir.Constant(left.type, 0.0))
+    elif not isinstance(left.type, ir.IntType) or left.type.width != 1:
         left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
     
     # Tworzenie bloków dla implementacji short-circuit
@@ -237,8 +273,15 @@ def _generate_short_circuit_or(self, left_node, right_node):
     self.builder.position_at_end(right_operand_block)
     right = self.visit(right_node)
     
+    # Upewnij się, że prawy operand nie jest wskaźnikiem
+    if isinstance(right.type, ir.PointerType) and not (isinstance(right.type.pointee, ir.IntType) and right.type.pointee.width == 8):
+        right = self.builder.load(right)
+        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
+    
     # Konwersja do typu bool (i1) jeśli potrzebna
-    if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+    if isinstance(right.type, ir.FloatType):
+        right = self.builder.fcmp_ordered('!=', right, ir.Constant(right.type, 0.0))
+    elif not isinstance(right.type, ir.IntType) or right.type.width != 1:
         right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
     
     # Przejście do bloku łączącego

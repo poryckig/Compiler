@@ -218,10 +218,10 @@ class ASTBuilder(langVisitor):
     
 #           * * * * BOOL * * * *
     def visitOrExpression(self, ctx):
-        left = self.visit(ctx.andExpression(0))
+        left = self.visit(ctx.xorExpression(0))
         
-        for i in range(1, len(ctx.andExpression())):
-            right = self.visit(ctx.andExpression(i))
+        for i in range(1, len(ctx.xorExpression())):
+            right = self.visit(ctx.xorExpression(i))
             operator = ctx.getChild(i*2 - 1).getText()  # '||' lub 'or'
             left = BinaryOperation(left, operator, right)
         
@@ -233,6 +233,16 @@ class ASTBuilder(langVisitor):
         for i in range(1, len(ctx.notExpression())):
             right = self.visit(ctx.notExpression(i))
             operator = ctx.getChild(i*2 - 1).getText()  # '&&' lub 'and'
+            left = BinaryOperation(left, operator, right)
+        
+        return left
+
+    def visitXorExpression(self, ctx):
+        left = self.visit(ctx.andExpression(0))
+        
+        for i in range(1, len(ctx.andExpression())):
+            right = self.visit(ctx.andExpression(i))
+            operator = ctx.getChild(i*2 - 1).getText()  # '^' lub 'xor'
             left = BinaryOperation(left, operator, right)
         
         return left
@@ -346,3 +356,11 @@ class ASTBuilder(langVisitor):
                         print(f"Expression[{i}]: {expr.getText()}")
         
         raise ValueError(f"Nieobsługiwany przypadek w primaryExpression: {ctx.getText()}")
+    
+    def visitBasicExpr(self, ctx):
+        return self.visit(ctx.orExpression())
+
+    def visitAssignExpr(self, ctx):
+        name = ctx.ID().getText()
+        value = self.visit(ctx.expression())
+        return Assignment(name, value)

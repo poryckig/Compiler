@@ -24,6 +24,23 @@ print c;
 c = (a || b) && !(a && b);  // true
 print c;
 
+// Bezpośrednie użycie XOR
+c = a ^ b;  // true (różne wartości)
+print c;
+
+// Test XOR dla różnych kombinacji
+c = true ^ true;   // false (takie same wartości)
+print c;
+
+c = false ^ false; // false (takie same wartości)
+print c;
+
+c = true ^ false;  // true (różne wartości)
+print c;
+
+c = false ^ true;  // true (różne wartości)
+print c;
+
 // Złożone wyrażenia logiczne
 c = !a || (b && a);  // false
 print c;
@@ -33,11 +50,11 @@ int x = 5;
 int y = 0;
 
 // Liczby niezerowe są traktowane jako true
-c = x;       // true
+c = x > 0;       // true
 print c;
 
 // Zero jest traktowane jako false
-c = y;       // false
+c = y == 0;       // true
 print c;
 
 // Porównania
@@ -57,3 +74,31 @@ print c;
 // Łączenie różnych typów operacji
 c = !b && (x > y);        // true
 print c;
+
+// * * * Test short-circuit evaluation dla OR * * *
+int z = 0;
+bool test_short_circuit = true;
+print test_short_circuit;  // true
+
+// Jeśli short-circuit działa prawidłowo, to teraz z nie zostanie zmienione
+test_short_circuit = test_short_circuit || (z = 10) > 0;
+print test_short_circuit;  // true
+print z;  // 0 (nie zostało zmienione dzięki short-circuit)
+
+// * * * Test short-circuit evaluation dla AND * * *
+z = 0;
+test_short_circuit = false;
+print test_short_circuit;  // false
+
+// Jeśli short-circuit działa prawidłowo, to teraz z nie zostanie zmienione
+test_short_circuit = test_short_circuit && (z = 10) > 0;
+print test_short_circuit;  // false
+print z;  // 0 (nie zostało zmienione dzięki short-circuit)
+
+// Test złożonych wyrażeń z nawiasami
+bool complex_expr = ((x > y) && (!b)) || (a && !true);
+print complex_expr;  // true
+
+// Test priorytetów operatorów
+bool precedence_test = !false && true || false && true;
+print precedence_test;  // true (! ma wyższy priorytet, następnie &&, na końcu ||)

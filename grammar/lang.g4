@@ -29,7 +29,7 @@ type
     : 'int'
     | 'float'
     | 'string'
-    | 'bool'
+    | 'bool'                                             // Typ logiczny
     ;
 
 assignment
@@ -50,11 +50,16 @@ readStatement
     ;
 
 expression
-    : orExpression
+    : orExpression                                       # BasicExpr
+    | ID '=' expression                                  # AssignExpr
     ;
 
 orExpression
-    : andExpression (('||' | 'or') andExpression)*
+    : xorExpression (('||' | 'or') xorExpression)*
+    ;
+
+xorExpression
+    : andExpression (('^' | 'xor') andExpression)*
     ;
 
 andExpression
