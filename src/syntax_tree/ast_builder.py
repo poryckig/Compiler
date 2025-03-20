@@ -30,28 +30,8 @@ class ASTBuilder(langVisitor):
         return self.visit(ctx.expression())
 
     def visitExpression(self, ctx:langParser.ExpressionContext):
-        # Obsługa nawiasów
-        if ctx.getChildCount() == 3 and ctx.getChild(0).getText() == '(':
-            return self.visit(ctx.expression(0))
-        
-        # Obsługa identyfikatorów i literałów
-        if ctx.ID():
-            return Variable(ctx.ID().getText())
-        if ctx.INT():
-            return IntegerLiteral(int(ctx.INT().getText()))
-        if ctx.FLOAT():
-            return FloatLiteral(float(ctx.FLOAT().getText()))
-        
-        # Obsługa operacji binarnych
-        if ctx.getChildCount() == 3 and len(ctx.expression()) == 2:
-            left = self.visit(ctx.expression(0))
-            right = self.visit(ctx.expression(1))
-            op = ctx.getChild(1).getText()
-            return BinaryOperation(left, op, right)
-        
-        # Jeśli żaden z powyższych przypadków nie pasuje, 
-        # delegujemy do standardowej implementacji
-        return self.visitChildren(ctx)
+        """Obsługuje wyrażenia przekierowując do orExpression."""
+        return self.visit(ctx.orExpression())
 
 #           * * * * DECLARATION * * * *
     def visitSimpleVarDecl(self, ctx):
@@ -235,3 +215,134 @@ class ASTBuilder(langVisitor):
     def visitStringLiteral(self, ctx):
         value = ctx.STRING().getText()
         return StringLiteral(value)
+    
+#           * * * * BOOL * * * *
+    def visitOrExpression(self, ctx):
+        left = self.visit(ctx.andExpression(0))
+        
+        for i in range(1, len(ctx.andExpression())):
+            right = self.visit(ctx.andExpression(i))
+            operator = ctx.getChild(i*2 - 1).getText()  # '||' lub 'or'
+            left = BinaryOperation(left, operator, right)
+        
+        return left
+
+    def visitAndExpression(self, ctx):
+        left = self.visit(ctx.notExpression(0))
+        
+        for i in range(1, len(ctx.notExpression())):
+            right = self.visit(ctx.notExpression(i))
+            operator = ctx.getChild(i*2 - 1).getText()  # '&&' lub 'and'
+            left = BinaryOperation(left, operator, right)
+        
+        return left
+
+    def visitNotExpression(self, ctx):
+        if ctx.getChildCount() == 2:  # '!' lub 'not' + expression
+            operand = self.visit(ctx.notExpression())
+            operator = ctx.getChild(0).getText()  # '!' lub 'not'
+            return UnaryOperation(operator, operand)
+        else:
+            return self.visit(ctx.comparisonExpression())
+
+    def visitComparisonExpression(self, ctx):
+        left = self.visit(ctx.additiveExpression(0))
+        
+        if ctx.comparisonOperator():
+            right = self.visit(ctx.additiveExpression(1))
+            operator = ctx.comparisonOperator().getText()
+            return BinaryOperation(left, operator, right)
+        
+        return left
+
+    def visitAdditiveExpression(self, ctx):
+        left = self.visit(ctx.multiplicativeExpression(0))
+        
+        for i in range(1, len(ctx.multiplicativeExpression())):
+            right = self.visit(ctx.multiplicativeExpression(i))
+            operator = ctx.getChild(i*2 - 1).getText()  # '+' lub '-'
+            left = BinaryOperation(left, operator, right)
+        
+        return left
+
+    def visitMultiplicativeExpression(self, ctx):
+        left = self.visit(ctx.primaryExpression(0))
+        
+        for i in range(1, len(ctx.primaryExpression())):
+            right = self.visit(ctx.primaryExpression(i))
+            operator = ctx.getChild(i*2 - 1).getText()  # '*' lub '/'
+            left = BinaryOperation(left, operator, right)
+        
+        return left
+
+    def visitPrimaryExpression(self, ctx):
+        # Sprawdzamy bezpośrednio, czy tekst to literał logiczny
+        if ctx.getChildCount() == 1:
+            text = ctx.getChild(0).getText()
+            if text == 'true' or text == 'false':
+                return BoolLiteral(text)
+        
+        if ctx.getChildCount() == 3 and ctx.getChild(0).getText() == '(':
+            # Wyrażenie w nawiasach - musimy odnieść się do pierwszego elementu na liście
+            if ctx.expression() and isinstance(ctx.expression(), list):
+                # Jeśli expression() zwraca listę, bierzemy pierwszy element
+                return self.visit(ctx.expression()[0])
+            elif ctx.expression():
+                # Jeśli expression() nie zwraca listy, używamy go bezpośrednio
+                return self.visit(ctx.expression())
+            else:
+                # Jeśli nie ma expression(), odwiedzamy bezpośrednio drugie dziecko (między nawiasami)
+                return self.visit(ctx.getChild(1))
+        
+        if ctx.ID():
+            # Sprawdź, czy to nie jest literał logiczny
+            id_text = ctx.ID().getText()
+            if id_text == 'true' or id_text == 'false':
+                return BoolLiteral(id_text)
+            
+            if ctx.getChildCount() > 1:
+                if ctx.getChildCount() == 4:  # ID[expr]
+                    name = ctx.ID().getText()
+                    if ctx.expression() and isinstance(ctx.expression(), list):
+                        index = self.visit(ctx.expression()[0])
+                    else:
+                        index = self.visit(ctx.expression())
+                    return ArrayAccess(name, index)
+                else:  # ID[expr][expr]
+                    name = ctx.ID().getText()
+                    if ctx.expression() and isinstance(ctx.expression(), list):
+                        row_index = self.visit(ctx.expression()[0])
+                        col_index = self.visit(ctx.expression()[1])
+                    else:
+                        # Ten przypadek powinien być obsługiwany inaczej, bo potrzebujemy dwóch indeksów
+                        raise ValueError("Niepoprawna struktura dostępu do macierzy")
+                    return MatrixAccess(name, row_index, col_index)
+            else:
+                return Variable(ctx.ID().getText())
+        
+        if ctx.INT():
+            return IntegerLiteral(int(ctx.INT().getText()))
+        
+        if ctx.FLOAT():
+            return FloatLiteral(float(ctx.FLOAT().getText()))
+        
+        if ctx.STRING():
+            return StringLiteral(ctx.STRING().getText())
+        
+        if ctx.BOOL():
+            return BoolLiteral(ctx.BOOL().getText())
+        
+        # Jeśli żaden z przypadków nie pasuje, wypisz strukturę kontekstu dla debugowania
+        print("DEBUG: Struktura primaryExpression:")
+        for i in range(ctx.getChildCount()):
+            print(f"Child {i}: {ctx.getChild(i).getText()}")
+        if hasattr(ctx, 'expression'):
+            print(f"Expression method: {ctx.expression()}")
+            if ctx.expression():
+                print(f"Expression type: {type(ctx.expression())}")
+                if isinstance(ctx.expression(), list):
+                    print(f"Expression list length: {len(ctx.expression())}")
+                    for i, expr in enumerate(ctx.expression()):
+                        print(f"Expression[{i}]: {expr.getText()}")
+        
+        raise ValueError(f"Nieobsługiwany przypadek w primaryExpression: {ctx.getText()}")

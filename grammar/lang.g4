@@ -28,7 +28,8 @@ matrixInitializer
 type
     : 'int'
     | 'float'
-    | 'string'               // Typ string
+    | 'string'
+    | 'bool'
     ;
 
 assignment
@@ -49,26 +50,53 @@ readStatement
     ;
 
 expression
-    : multiplyingExpression (('+' | '-') multiplyingExpression)*   # AddSubExpr
+    : orExpression
     ;
 
-multiplyingExpression
-    : primaryExpression (('*' | '/') primaryExpression)*           # MulDivExpr
+orExpression
+    : andExpression (('||' | 'or') andExpression)*
+    ;
+
+andExpression
+    : notExpression (('&&' | 'and') notExpression)*
+    ;
+
+notExpression
+    : ('!' | 'not') notExpression
+    | comparisonExpression
+    ;
+
+comparisonExpression
+    : additiveExpression (comparisonOperator additiveExpression)?
+    ;
+
+comparisonOperator
+    : '==' | '!=' | '<' | '>' | '<=' | '>='
+    ;
+
+additiveExpression
+    : multiplicativeExpression (('+' | '-') multiplicativeExpression)*
+    ;
+
+multiplicativeExpression
+    : primaryExpression (('*' | '/') primaryExpression)*
     ;
 
 primaryExpression
-    : '(' expression ')'                                 # ParenExpr
-    | ID                                                 # VarExpr
-    | ID '[' expression ']'                              # ArrayAccessExpr
-    | ID '[' expression ']' '[' expression ']'           # MatrixAccessExpr
-    | INT                                                # IntLiteral
-    | FLOAT                                              # FloatLiteral
-    | STRING                                             # StringLiteral
+    : '(' expression ')'
+    | ID
+    | ID '[' expression ']'
+    | ID '[' expression ']' '[' expression ']'
+    | INT
+    | FLOAT
+    | STRING
+    | BOOL
     ;
 
 ID: [a-zA-Z][a-zA-Z0-9_]*;
 INT: [0-9]+;
 FLOAT: [0-9]+ '.' [0-9]+;
-STRING: '"' (~["\\\r\n] | '\\' ["\\/bfnrt])* '"';        // Literał stringowy
+STRING: '"' (~["\\\r\n] | '\\' ["\\/bfnrt])* '"';
+BOOL: 'true' | 'false';
 WS: [ \t\r\n]+ -> skip;
 COMMENT: '//' ~[\r\n]* -> skip;

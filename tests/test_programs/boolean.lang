@@ -1,0 +1,59 @@
+// Deklaracje zmiennych logicznych
+bool a = true;
+bool b = false;
+bool c;
+
+// Wyświetlanie podstawowych wartości
+print a;    // true
+print b;    // false
+
+// Operacje logiczne
+// AND
+c = a && b;  // false
+print c;
+
+// OR
+c = a || b;  // true
+print c;
+
+// NOT
+c = !a;     // false
+print c;
+
+// XOR - implementacja za pomocą innych operacji
+c = (a || b) && !(a && b);  // true
+print c;
+
+// Złożone wyrażenia logiczne
+c = !a || (b && a);  // false
+print c;
+
+// Wartości liczbowe w kontekście logicznym
+int x = 5;
+int y = 0;
+
+// Liczby niezerowe są traktowane jako true
+c = x;       // true
+print c;
+
+// Zero jest traktowane jako false
+c = y;       // false
+print c;
+
+// Porównania
+c = x > 3;   // true
+print c;
+
+c = y == 0;  // true
+print c;
+
+c = x <= y;  // false
+print c;
+
+// Łączenie operacji porównania
+c = (x > 3) && (y == 0);  // true
+print c;
+
+// Łączenie różnych typów operacji
+c = !b && (x > y);        // true
+print c;

@@ -29,6 +29,11 @@ def visit_VariableDeclaration(self, node):
         # Domyślną wartością jest wskaźnik do pustego stringa
         zero = ir.Constant(self.int_type, 0)
         default_value = self.builder.gep(empty_global, [zero, zero], name=f"{global_id}_ptr")
+    
+    elif node.var_type == 'bool':
+        # Dla typu logicznego używamy 1-bitowego typu całkowitego
+        var_type = ir.IntType(1)
+        default_value = ir.Constant(var_type, 0)  # false jako wartość domyślna
     else:
         raise ValueError(f"Nieznany typ zmiennej: {node.var_type}")
     

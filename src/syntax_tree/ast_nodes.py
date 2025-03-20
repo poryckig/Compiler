@@ -95,3 +95,13 @@ class MatrixAssignment(ASTNode):
 class StringLiteral(ASTNode):
     def __init__(self, value):
         self.value = value      # Wartość łącznie z cudzysłowami
+        
+#           * * * * BOOL * * * *   
+class BoolLiteral(ASTNode):
+    def __init__(self, value):
+        self.value = value
+        
+class UnaryOperation(ASTNode):
+    def __init__(self, operator, operand):
+        self.operator = operator
+        self.operand = operand

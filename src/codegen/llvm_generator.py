@@ -7,11 +7,13 @@ from src.variables.integer_generator import visit_IntegerLiteral
 from src.variables.float_generator import visit_FloatLiteral
 from src.actions.declare_generator import visit_VariableDeclaration
 from src.actions.assign_generator import visit_Assignment
-from src.actions.operations.binary_operation_generator import visit_BinaryOperation
+from src.actions.operations.binary_operation_generator import visit_BinaryOperation, _generate_short_circuit_and, _generate_short_circuit_or
+from src.actions.operations.logical_operation_generator import visit_OrExpr, visit_AndExpr, visit_NotExpr, visit_CompareExpr, visit_UnaryOperation
 from src.IO.IO_generator import visit_PrintStatement, visit_ReadStatement
 from src.array.array_generator import visit_ArrayDeclaration, visit_ArrayAccess, visit_ArrayAssignment
 from src.matrix.matrix_generator import visit_MatrixDeclaration, visit_MatrixAccess, visit_MatrixAssignment, _emit_matrix_error_message, _check_matrix_bounds_and_store
 from src.variables.string_generator import visit_StringLiteral
+from src.variables.bool_generator import visit_BoolLiteral
 
 class LLVMGenerator:
     def __init__(self):
@@ -123,3 +125,13 @@ LLVMGenerator._emit_matrix_error_message = _emit_matrix_error_message
 LLVMGenerator._check_matrix_bounds_and_store = _check_matrix_bounds_and_store
 
 LLVMGenerator.visit_StringLiteral = visit_StringLiteral
+
+LLVMGenerator.visit_BoolLiteral = visit_BoolLiteral
+LLVMGenerator.visit_OrExpr = visit_OrExpr
+LLVMGenerator.visit_AndExpr = visit_AndExpr
+LLVMGenerator.visit_NotExpr = visit_NotExpr
+LLVMGenerator.visit_CompareExpr = visit_CompareExpr
+LLVMGenerator.visit_UnaryOperation = visit_UnaryOperation
+
+LLVMGenerator._generate_short_circuit_and = _generate_short_circuit_and
+LLVMGenerator._generate_short_circuit_or = _generate_short_circuit_or

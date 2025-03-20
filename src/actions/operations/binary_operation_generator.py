@@ -5,7 +5,13 @@ def visit_BinaryOperation(self, node):
     # Debugowanie
     print(f"Przetwarzanie operacji binarnej: {node.operator}")
     
-    # Oblicz wartości lewego i prawego operandu
+    # Sprawdzenie, czy jest to operacja logiczna z short-circuit evaluation
+    if node.operator in ['&&', 'and']:
+        return self._generate_short_circuit_and(node.left, node.right)
+    elif node.operator in ['||', 'or']:
+        return self._generate_short_circuit_or(node.left, node.right)
+    
+    # Dla pozostałych operacji, oblicz wartości lewego i prawego operandu
     left = self.visit(node.left)
     right = self.visit(node.right)
     
@@ -24,7 +30,68 @@ def visit_BinaryOperation(self, node):
     
     print(f"Czy operacja zmiennoprzecinkowa: {is_float_operation}")
     
-    # Wykonaj odpowiednią operację w zależności od operatora i typu
+    # Operatory porównania
+    if node.operator == '==':
+        if is_float_operation:
+            if isinstance(left.type, ir.IntType):
+                left = self.builder.sitofp(left, self.float_type)
+            if isinstance(right.type, ir.IntType):
+                right = self.builder.sitofp(right, self.float_type)
+            return self.builder.fcmp_ordered('==', left, right)
+        else:
+            return self.builder.icmp_signed('==', left, right)
+    
+    elif node.operator == '!=':
+        if is_float_operation:
+            if isinstance(left.type, ir.IntType):
+                left = self.builder.sitofp(left, self.float_type)
+            if isinstance(right.type, ir.IntType):
+                right = self.builder.sitofp(right, self.float_type)
+            return self.builder.fcmp_ordered('!=', left, right)
+        else:
+            return self.builder.icmp_signed('!=', left, right)
+    
+    elif node.operator == '<':
+        if is_float_operation:
+            if isinstance(left.type, ir.IntType):
+                left = self.builder.sitofp(left, self.float_type)
+            if isinstance(right.type, ir.IntType):
+                right = self.builder.sitofp(right, self.float_type)
+            return self.builder.fcmp_ordered('<', left, right)
+        else:
+            return self.builder.icmp_signed('<', left, right)
+    
+    elif node.operator == '>':
+        if is_float_operation:
+            if isinstance(left.type, ir.IntType):
+                left = self.builder.sitofp(left, self.float_type)
+            if isinstance(right.type, ir.IntType):
+                right = self.builder.sitofp(right, self.float_type)
+            return self.builder.fcmp_ordered('>', left, right)
+        else:
+            return self.builder.icmp_signed('>', left, right)
+    
+    elif node.operator == '<=':
+        if is_float_operation:
+            if isinstance(left.type, ir.IntType):
+                left = self.builder.sitofp(left, self.float_type)
+            if isinstance(right.type, ir.IntType):
+                right = self.builder.sitofp(right, self.float_type)
+            return self.builder.fcmp_ordered('<=', left, right)
+        else:
+            return self.builder.icmp_signed('<=', left, right)
+    
+    elif node.operator == '>=':
+        if is_float_operation:
+            if isinstance(left.type, ir.IntType):
+                left = self.builder.sitofp(left, self.float_type)
+            if isinstance(right.type, ir.IntType):
+                right = self.builder.sitofp(right, self.float_type)
+            return self.builder.fcmp_ordered('>=', left, right)
+        else:
+            return self.builder.icmp_signed('>=', left, right)
+    
+    # Standardowe operacje arytmetyczne
     if node.operator == '+':
         if is_float_operation:
             # Konwersja operandów
@@ -85,8 +152,105 @@ def visit_BinaryOperation(self, node):
             # Wykonaj dzielenie całkowitoliczbowe
             print("Wykonywanie operacji sdiv")
             result = self.builder.sdiv(left, right)
+    elif node.operator == 'xor' or node.operator == '^':
+        # Konwersja do bool jeśli potrzebna
+        if not isinstance(left.type, ir.IntType):
+            left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
+        if not isinstance(right.type, ir.IntType):
+            right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
+            
+        # Jeśli to boolowskie wartości, możemy użyć XOR bezpośrednio
+        if left.type.width == 1 and right.type.width == 1:
+            result = self.builder.xor(left, right)
+        else:
+            # Dla innych wartości całkowitych możemy też użyć XOR
+            result = self.builder.xor(left, right)
     else:
         raise ValueError(f"Nieznany operator: {node.operator}")
     
     print(f"Typ wyniku operacji: {result.type}")
     return result
+
+def _generate_short_circuit_and(self, left_node, right_node):
+    """Generuje kod LLVM dla operacji AND z obsługą short-circuit evaluation."""
+    # Pobranie pierwszego operandu
+    left = self.visit(left_node)
+    
+    # Short-circuit AND evaluation - jeśli lewy operand jest false,
+    # nie musimy oceniać prawego operandu
+    
+    # Konwersja do typu bool (i1) jeśli potrzebna
+    if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+        left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
+    
+    # Tworzenie bloków dla implementacji short-circuit
+    current_block = self.builder.block
+    right_operand_block = self.builder.append_basic_block(name="and_right_operand")
+    merge_block = self.builder.append_basic_block(name="and_merge")
+    
+    # Skok warunkowy - jeśli lewy operand jest false, możemy pominąć ocenę prawego
+    self.builder.cbranch(left, right_operand_block, merge_block)
+    
+    # Blok do oceny prawego operandu
+    self.builder.position_at_end(right_operand_block)
+    right = self.visit(right_node)
+    
+    # Konwersja do typu bool (i1) jeśli potrzebna
+    if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+        right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
+    
+    # Przejście do bloku łączącego
+    self.builder.branch(merge_block)
+    right_block = self.builder.block
+    
+    # Blok łączący wyniki
+    self.builder.position_at_end(merge_block)
+    
+    # Utworzenie phi node dla wyboru odpowiedniej wartości
+    phi = self.builder.phi(ir.IntType(1), name="and_result")
+    phi.add_incoming(ir.Constant(ir.IntType(1), 0), current_block)  # Jeśli lewy operand był false
+    phi.add_incoming(right, right_block)                            # Wartość z prawego operandu
+    
+    return phi
+
+def _generate_short_circuit_or(self, left_node, right_node):
+    """Generuje kod LLVM dla operacji OR z obsługą short-circuit evaluation."""
+    # Pobranie pierwszego operandu
+    left = self.visit(left_node)
+    
+    # Short-circuit OR evaluation - jeśli lewy operand jest true,
+    # nie musimy oceniać prawego operandu
+    
+    # Konwersja do typu bool (i1) jeśli potrzebna
+    if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+        left = self.builder.icmp_unsigned('!=', left, ir.Constant(left.type, 0))
+    
+    # Tworzenie bloków dla implementacji short-circuit
+    current_block = self.builder.block
+    right_operand_block = self.builder.append_basic_block(name="or_right_operand")
+    merge_block = self.builder.append_basic_block(name="or_merge")
+    
+    # Skok warunkowy - jeśli lewy operand jest true, możemy pominąć ocenę prawego
+    self.builder.cbranch(left, merge_block, right_operand_block)
+    
+    # Blok do oceny prawego operandu
+    self.builder.position_at_end(right_operand_block)
+    right = self.visit(right_node)
+    
+    # Konwersja do typu bool (i1) jeśli potrzebna
+    if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+        right = self.builder.icmp_unsigned('!=', right, ir.Constant(right.type, 0))
+    
+    # Przejście do bloku łączącego
+    self.builder.branch(merge_block)
+    right_block = self.builder.block
+    
+    # Blok łączący wyniki
+    self.builder.position_at_end(merge_block)
+    
+    # Utworzenie phi node dla wyboru odpowiedniej wartości
+    phi = self.builder.phi(ir.IntType(1), name="or_result")
+    phi.add_incoming(ir.Constant(ir.IntType(1), 1), current_block)  # Jeśli lewy operand był true
+    phi.add_incoming(right, right_block)                            # Wartość z prawego operandu
+    
+    return phi

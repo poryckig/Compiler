@@ -14,27 +14,80 @@ def visit_PrintStatement(self, node):
         format_str = "%.1f\n\0"
         # Konwersja float na double dla printf
         value = self.builder.fpext(value, ir.DoubleType())
+    elif isinstance(value.type, ir.IntType) and value.type.width == 1:
+        # Dla wartości logicznych
+        
+        # Tworzenie bloków dla warunkowego wyświetlania "true" lub "false"
+        true_block = self.builder.append_basic_block(name="print_true")
+        false_block = self.builder.append_basic_block(name="print_false")
+        merge_block = self.builder.append_basic_block(name="print_bool_end")
+        
+        # Warunek skoku
+        self.builder.cbranch(value, true_block, false_block)
+        
+        # Blok dla "true"
+        self.builder.position_at_end(true_block)
+        
+        # Format dla "true"
+        true_format = "true\n\0"
+        true_format_bytes = true_format.encode("ascii")
+        true_format_type = ir.ArrayType(ir.IntType(8), len(true_format_bytes))
+        true_format_const = ir.Constant(true_format_type, bytearray(true_format_bytes))
+        
+        true_format_global = ir.GlobalVariable(self.module, true_format_type, name=f"fmt.true.{next(self._global_counter)}")
+        true_format_global.linkage = 'private'
+        true_format_global.global_constant = True
+        true_format_global.initializer = true_format_const
+        
+        true_format_ptr = self.builder.bitcast(true_format_global, ir.PointerType(ir.IntType(8)))
+        
+        # Wywołaj printf dla "true"
+        self.builder.call(self.printf_func, [true_format_ptr])
+        self.builder.branch(merge_block)
+        
+        # Blok dla "false"
+        self.builder.position_at_end(false_block)
+        
+        # Format dla "false"
+        false_format = "false\n\0"
+        false_format_bytes = false_format.encode("ascii")
+        false_format_type = ir.ArrayType(ir.IntType(8), len(false_format_bytes))
+        false_format_const = ir.Constant(false_format_type, bytearray(false_format_bytes))
+        
+        false_format_global = ir.GlobalVariable(self.module, false_format_type, name=f"fmt.false.{next(self._global_counter)}")
+        false_format_global.linkage = 'private'
+        false_format_global.global_constant = True
+        false_format_global.initializer = false_format_const
+        
+        false_format_ptr = self.builder.bitcast(false_format_global, ir.PointerType(ir.IntType(8)))
+        
+        # Wywołaj printf dla "false"
+        self.builder.call(self.printf_func, [false_format_ptr])
+        self.builder.branch(merge_block)
+        
+        # Blok końcowy
+        self.builder.position_at_end(merge_block)
+        
+        # Nie ma bezpośredniej wartości do zwrócenia, wszystko zostało obsłużone w blokach
+        return None
     else:
         # Dla liczb całkowitych
         format_str = "%d\n\0"
     
-    # Tworzenie stałej dla formatu
-    format_bytes = format_str.encode('ascii')
-    fmt_type = ir.ArrayType(ir.IntType(8), len(format_bytes))
-    fmt_const = ir.Constant(fmt_type, bytearray(format_bytes))
+    # Format dla pozostałych typów
+    format_bytes = format_str.encode("ascii")
+    format_type = ir.ArrayType(ir.IntType(8), len(format_bytes))
+    format_const = ir.Constant(format_type, bytearray(format_bytes))
     
-    # Globalna zmienna dla formatu
-    global_id = f"fmt.{next(self._global_counter)}"
-    fmt_global = ir.GlobalVariable(self.module, fmt_type, name=global_id)
-    fmt_global.linkage = 'private'
-    fmt_global.global_constant = True
-    fmt_global.initializer = fmt_const
+    format_global = ir.GlobalVariable(self.module, format_type, name=f"fmt.{next(self._global_counter)}")
+    format_global.linkage = 'private'
+    format_global.global_constant = True
+    format_global.initializer = format_const
     
-    # Konwersja wskaźnika
-    fmt_ptr = self.builder.bitcast(fmt_global, ir.PointerType(ir.IntType(8)))
+    format_ptr = self.builder.bitcast(format_global, ir.PointerType(ir.IntType(8)))
     
-    # Wywołanie printf - używamy funkcji zadeklarowanej w głównym generatorze
-    self.builder.call(self.printf_func, [fmt_ptr, value])
+    # Wywołaj printf
+    self.builder.call(self.printf_func, [format_ptr, value])
     
 def visit_ReadStatement(self, node):
     """Generuje kod LLVM dla instrukcji read."""
