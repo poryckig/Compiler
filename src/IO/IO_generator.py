@@ -200,5 +200,121 @@ def visit_ReadStatement(self, node):
         # [...]
         pass
     else:
-        # [...]
-        pass
+        # Odczyt do pojedynczej zmiennej
+        if node.name not in self.symbol_table:
+            raise ValueError(f"Niezadeklarowana zmienna: {node.name}")
+            
+        var_info = self.symbol_table[node.name]
+        
+        # Sprawdź typ zmiennej
+        if isinstance(var_info, tuple):
+            raise ValueError(f"Zmienna {node.name} jest tablicą lub macierzą, nie pojedynczą zmienną")
+            
+        var_ptr = var_info
+        var_type = var_ptr.type.pointee
+        
+        # Określ format na podstawie typu zmiennej
+        if isinstance(var_type, ir.IntType):
+            if var_type.width == 1:  # Typ logiczny (boolean)
+                # Dla wartości logicznych wczytujemy liczbę całkowitą
+                format_str = "%d\0"
+                
+                # Tworzymy tymczasową zmienną dla wczytania wartości całkowitej
+                tmp_var = self.builder.alloca(ir.IntType(32), name=f"{node.name}_tmp")
+                
+                # Tworzymy globalną zmienną dla format stringa
+                c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_str)), 
+                                        bytearray(format_str.encode("utf8")))
+                
+                # Generuj unikalną nazwę
+                format_count = next(self._global_counter)
+                
+                global_format = ir.GlobalVariable(self.module, c_format_str.type, 
+                                                name=f".str.scanf.bool.{format_count}")
+                global_format.linkage = 'internal'
+                global_format.global_constant = True
+                global_format.initializer = c_format_str
+                
+                # Konwertuj wskaźnik do formatu do i8*
+                format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
+                
+                # Wywołaj scanf do wczytania wartości całkowitej
+                result = self.builder.call(self.scanf_func, [format_ptr, tmp_var])
+                
+                # Sprawdź czy scanf się powiódł (zwrócił 1 jako liczbę pomyślnie odczytanych elementów)
+                one = ir.Constant(ir.IntType(32), 1)
+                is_success = self.builder.icmp_signed('==', result, one)
+                
+                # Tworzymy bloki dla warunkowego przypisania wartości
+                success_block = self.builder.append_basic_block(name=f"{node.name}_read_success")
+                merge_block = self.builder.append_basic_block(name=f"{node.name}_read_merge")
+                
+                # Warunek skoku
+                self.builder.cbranch(is_success, success_block, merge_block)
+                
+                # Blok dla pomyślnego odczytu
+                self.builder.position_at_end(success_block)
+                
+                # Wczytaj wartość z tymczasowej zmiennej
+                tmp_val = self.builder.load(tmp_var)
+                
+                # Konwertuj wartość całkowitą na wartość logiczną (0->false, reszta->true)
+                zero = ir.Constant(ir.IntType(32), 0)
+                bool_val = self.builder.icmp_signed('!=', tmp_val, zero)
+                
+                # Zapisz wartość logiczną do zmiennej
+                self.builder.store(bool_val, var_ptr)
+                self.builder.branch(merge_block)
+                
+                # Ustaw pozycję na blok końcowy
+                self.builder.position_at_end(merge_block)
+                
+            else:  # Typ liczbowy całkowity
+                format_str = "%d\0"
+                
+                # Tworzymy globalną zmienną dla format stringa
+                c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_str)), 
+                                        bytearray(format_str.encode("utf8")))
+                
+                # Generuj unikalną nazwę
+                format_count = next(self._global_counter)
+                
+                global_format = ir.GlobalVariable(self.module, c_format_str.type, 
+                                                name=f".str.scanf.int.{format_count}")
+                global_format.linkage = 'internal'
+                global_format.global_constant = True
+                global_format.initializer = c_format_str
+                
+                # Konwertuj wskaźnik do formatu do i8*
+                format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
+                
+                # Wywołaj scanf i sprawdź wartość zwróconą
+                result = self.builder.call(self.scanf_func, [format_ptr, var_ptr])
+                
+        elif isinstance(var_type, ir.FloatType):
+            format_str = "%f\0"  # Format dla liczb zmiennoprzecinkowych
+            
+            # Tworzymy globalną zmienną dla format stringa
+            c_format_str = ir.Constant(ir.ArrayType(ir.IntType(8), len(format_str)), 
+                                    bytearray(format_str.encode("utf8")))
+            
+            # Generuj unikalną nazwę
+            format_count = next(self._global_counter)
+            
+            global_format = ir.GlobalVariable(self.module, c_format_str.type, 
+                                            name=f".str.scanf.float.{format_count}")
+            global_format.linkage = 'internal'
+            global_format.global_constant = True
+            global_format.initializer = c_format_str
+            
+            # Konwertuj wskaźnik do formatu do i8*
+            format_ptr = self.builder.bitcast(global_format, ir.PointerType(ir.IntType(8)))
+            
+            # Opróżnienie bufora wyjścia
+            self.builder.call(self.fflush_func, [self.stdout])
+
+            # Wywołaj scanf
+            result = self.builder.call(self.scanf_func, [format_ptr, var_ptr])
+            
+        else:
+            raise ValueError(f"Nieobsługiwany typ dla operacji read: {var_type}")

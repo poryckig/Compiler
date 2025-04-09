@@ -75,6 +75,14 @@ class LLVMGenerator:
             self.int_type, [ir.PointerType(ir.IntType(8))], var_arg=True
         )
         self.scanf_func = ir.Function(self.module, scanf_type, name="scanf")
+
+        # W metodzie inicjalizacji lub konstruktorze
+        fflush_type = ir.FunctionType(ir.IntType(32), [ir.PointerType(ir.IntType(8))])
+        self.fflush_func = ir.Function(self.module, fflush_type, name="fflush")
+        
+        # Deklaracja zmiennej globalnej stdout
+        stdout_type = ir.PointerType(ir.IntType(8))
+        self.stdout = ir.GlobalVariable(self.module, stdout_type, name="stdout")
     
     def generate(self, ast):
         # Generowanie kodu z AST
