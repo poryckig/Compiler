@@ -38,23 +38,23 @@ def visit_VariableDeclaration(self, node):
         raise ValueError(f"Nieznany typ zmiennej: {node.var_type}")
     
     # Debugowanie
-    print(f"Deklaracja zmiennej {node.name} typu {var_type}")
+    # print(f"Deklaracja zmiennej {node.name} typu {var_type}")
     
     # Alokuj zmienną na stosie
     var_ptr = self.builder.alloca(var_type, name=node.name)
     
     # Inicjalizuj zmienną zerami/pustym stringiem
     self.builder.store(default_value, var_ptr)
-    print(f"Inicjalizacja zmiennej {node.name} zerami")
+    # print(f"Inicjalizacja zmiennej {node.name} zerami")
     
     # Zapisz wskaźnik do tablicy symboli
     self.symbol_table[node.name] = var_ptr
     
     # Jeśli jest wartość początkowa, przypisz ją
     if node.initial_value:
-        print(f"Inicjalizacja zmiennej {node.name}")
+        # print(f"Inicjalizacja zmiennej {node.name}")
         value = self.visit(node.initial_value)
-        print(f"Wartość początkowa typu {value.type}")
+        # print(f"Wartość początkowa typu {value.type}")
         
         # Automatyczna konwersja typów, jeśli potrzebna
         if isinstance(var_type, ir.IntType) and isinstance(value.type, ir.FloatType):
@@ -63,6 +63,6 @@ def visit_VariableDeclaration(self, node):
             value = self.builder.sitofp(value, var_type)
         
         self.builder.store(value, var_ptr)
-        print(f"Zmienna {node.name} zainicjalizowana")
+        # print(f"Zmienna {node.name} zainicjalizowana")
         
     return var_ptr

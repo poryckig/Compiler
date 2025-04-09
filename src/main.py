@@ -10,6 +10,8 @@ from src.syntax_tree.ast_builder import ASTBuilder
 from src.codegen.llvm_generator import LLVMGenerator
 from src.utils.error_handler import CompilerErrorListener
 
+DEBUG = False
+
 def print_ast(node, indent=0):
     """Pomocnicza funkcja do wyświetlania AST w formie drzewa"""
     if node is None:
@@ -85,20 +87,21 @@ def main():
             return
         
         # 3. Budowa AST
-        print("Budowanie AST...")
+        if DEBUG: print("Budowanie AST...")
         ast_builder = ASTBuilder()
         ast = ast_builder.visit(tree)
         
         # 4. Wyświetlenie AST (do debugowania)
         if ast:
-            print("AST utworzone pomyślnie:")
-            print_ast(ast)
+            if DEBUG:
+                print("AST utworzone pomyślnie:")
+                print_ast(ast)
         else:
             print("AST nie zostało utworzone poprawnie.")
             return
         
         # 5. Generowanie kodu LLVM IR
-        print("Generowanie kodu LLVM IR...")
+        if DEBUG: print("Generowanie kodu LLVM IR...")
         generator = LLVMGenerator()
         llvm_ir = generator.generate(ast)
         

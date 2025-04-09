@@ -3,7 +3,7 @@ import llvmlite.ir as ir
 def visit_BinaryOperation(self, node):
     """Generuje kod LLVM dla operacji binarnej."""
     # Debugowanie
-    print(f"Przetwarzanie operacji binarnej: {node.operator}")
+    # print(f"Przetwarzanie operacji binarnej: {node.operator}")
     
     # Sprawdzenie, czy jest to operacja logiczna z short-circuit evaluation
     if node.operator in ['&&', 'and']:
@@ -15,20 +15,20 @@ def visit_BinaryOperation(self, node):
     left = self.visit(node.left)
     right = self.visit(node.right)
     
-    print(f"Typ wartości lewej: {left.type}")
-    print(f"Typ wartości prawej: {right.type}")
+    # print(f"Typ wartości lewej: {left.type}")
+    # print(f"Typ wartości prawej: {right.type}")
     
     # Upewnij się, że lewy operand nie jest wskaźnikiem do wartości
     if isinstance(left.type, ir.PointerType) and not (isinstance(left.type.pointee, ir.IntType) and left.type.pointee.width == 8):
         # Załaduj wartość ze wskaźnika
         left = self.builder.load(left)
-        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
+        # print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
     
     # Upewnij się, że prawy operand nie jest wskaźnikiem do wartości
     if isinstance(right.type, ir.PointerType) and not (isinstance(right.type.pointee, ir.IntType) and right.type.pointee.width == 8):
         # Załaduj wartość ze wskaźnika
         right = self.builder.load(right)
-        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
+        # print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
     
     # Sprawdź typy operandów
     is_float_operation = isinstance(left.type, ir.FloatType) or isinstance(right.type, ir.FloatType)
@@ -37,10 +37,10 @@ def visit_BinaryOperation(self, node):
     if (isinstance(left.type, ir.PointerType) and left.type.pointee == ir.IntType(8)) or \
        (isinstance(right.type, ir.PointerType) and right.type.pointee == ir.IntType(8)):
         # Zwróć lewy operand jako wynik - prosta implementacja tylko dla literałów
-        print("UWAGA: Operacje na stringach nie są obsługiwane w uproszczonej implementacji")
+        # print("UWAGA: Operacje na stringach nie są obsługiwane w uproszczonej implementacji")
         return left
     
-    print(f"Czy operacja zmiennoprzecinkowa: {is_float_operation}")
+    # print(f"Czy operacja zmiennoprzecinkowa: {is_float_operation}")
     
     # Operator XOR
     if node.operator == '^' or node.operator == 'xor':
@@ -129,11 +129,11 @@ def visit_BinaryOperation(self, node):
                 right = self.builder.sitofp(right, self.float_type)
                 
             # Wykonaj dodawanie zmiennoprzecinkowe
-            print("Wykonywanie operacji fadd")
+            # print("Wykonywanie operacji fadd")
             result = self.builder.fadd(left, right)
         else:
             # Wykonaj dodawanie całkowitoliczbowe
-            print("Wykonywanie operacji add")
+            # print("Wykonywanie operacji add")
             result = self.builder.add(left, right)
     elif node.operator == '-':
         if is_float_operation:
@@ -144,11 +144,11 @@ def visit_BinaryOperation(self, node):
                 right = self.builder.sitofp(right, self.float_type)
                 
             # Wykonaj odejmowanie zmiennoprzecinkowe
-            print("Wykonywanie operacji fsub")
+            # print("Wykonywanie operacji fsub")
             result = self.builder.fsub(left, right)
         else:
             # Wykonaj odejmowanie całkowitoliczbowe
-            print("Wykonywanie operacji sub")
+            # print("Wykonywanie operacji sub")
             result = self.builder.sub(left, right)
     elif node.operator == '*':
         if is_float_operation:
@@ -159,11 +159,11 @@ def visit_BinaryOperation(self, node):
                 right = self.builder.sitofp(right, self.float_type)
                 
             # Wykonaj mnożenie zmiennoprzecinkowe
-            print("Wykonywanie operacji fmul")
+            # print("Wykonywanie operacji fmul")
             result = self.builder.fmul(left, right)
         else:
             # Wykonaj mnożenie całkowitoliczbowe
-            print("Wykonywanie operacji mul")
+            # print("Wykonywanie operacji mul")
             result = self.builder.mul(left, right)
     elif node.operator == '/':
         if is_float_operation:
@@ -174,16 +174,16 @@ def visit_BinaryOperation(self, node):
                 right = self.builder.sitofp(right, self.float_type)
                 
             # Wykonaj dzielenie zmiennoprzecinkowe
-            print("Wykonywanie operacji fdiv")
+            # print("Wykonywanie operacji fdiv")
             result = self.builder.fdiv(left, right)
         else:
             # Wykonaj dzielenie całkowitoliczbowe
-            print("Wykonywanie operacji sdiv")
+            # print("Wykonywanie operacji sdiv")
             result = self.builder.sdiv(left, right)
     else:
         raise ValueError(f"Nieznany operator: {node.operator}")
     
-    print(f"Typ wyniku operacji: {result.type}")
+    # print(f"Typ wyniku operacji: {result.type}")
     return result
 
 def _generate_short_circuit_and(self, left_node, right_node):
@@ -194,7 +194,7 @@ def _generate_short_circuit_and(self, left_node, right_node):
     # Upewnij się, że lewy operand nie jest wskaźnikiem
     if isinstance(left.type, ir.PointerType) and not (isinstance(left.type.pointee, ir.IntType) and left.type.pointee.width == 8):
         left = self.builder.load(left)
-        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
+        # print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
         
     # Short-circuit AND evaluation - jeśli lewy operand jest false,
     # nie musimy oceniać prawego operandu
@@ -220,7 +220,7 @@ def _generate_short_circuit_and(self, left_node, right_node):
     # Upewnij się, że prawy operand nie jest wskaźnikiem
     if isinstance(right.type, ir.PointerType) and not (isinstance(right.type.pointee, ir.IntType) and right.type.pointee.width == 8):
         right = self.builder.load(right)
-        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
+        # print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
     
     # Konwersja do typu bool (i1) jeśli potrzebna
     if isinstance(right.type, ir.FloatType):
@@ -250,7 +250,7 @@ def _generate_short_circuit_or(self, left_node, right_node):
     # Upewnij się, że lewy operand nie jest wskaźnikiem
     if isinstance(left.type, ir.PointerType) and not (isinstance(left.type.pointee, ir.IntType) and left.type.pointee.width == 8):
         left = self.builder.load(left)
-        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
+        # print(f"Załadowano wartość ze wskaźnika. Nowy typ: {left.type}")
     
     # Short-circuit OR evaluation - jeśli lewy operand jest true,
     # nie musimy oceniać prawego operandu
@@ -276,7 +276,7 @@ def _generate_short_circuit_or(self, left_node, right_node):
     # Upewnij się, że prawy operand nie jest wskaźnikiem
     if isinstance(right.type, ir.PointerType) and not (isinstance(right.type.pointee, ir.IntType) and right.type.pointee.width == 8):
         right = self.builder.load(right)
-        print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
+        # print(f"Załadowano wartość ze wskaźnika. Nowy typ: {right.type}")
     
     # Konwersja do typu bool (i1) jeśli potrzebna
     if isinstance(right.type, ir.FloatType):

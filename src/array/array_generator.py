@@ -10,7 +10,7 @@ def visit_ArrayDeclaration(self, node):
     else:
         raise ValueError(f"Nieznany typ tablicy: {node.var_type}")
         
-    print(f"Deklaracja tablicy {node.name} typu {node.var_type}[{node.size}]")
+    # print(f"Deklaracja tablicy {node.name} typu {node.var_type}[{node.size}]")
         
     # Utwórz typ tablicy
     array_type = ir.ArrayType(element_type, node.size)
@@ -24,7 +24,7 @@ def visit_ArrayDeclaration(self, node):
         
     # Inicjalizacja tablicy, jeśli podano wartości początkowe
     if node.initial_values:
-        print(f"Inicjalizacja tablicy {node.name} {len(node.initial_values)} wartościami")
+        # print(f"Inicjalizacja tablicy {node.name} {len(node.initial_values)} wartościami")
         for i, value_node in enumerate(node.initial_values):
             if i >= node.size:
                 print(f"Ostrzeżenie: Tablica {node.name} zainicjalizowana większą liczbą elementów niż rozmiar {node.size}")

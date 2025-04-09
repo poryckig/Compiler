@@ -11,7 +11,7 @@ def visit_MatrixDeclaration(self, node):
     else:
         raise ValueError(f"Nieznany typ macierzy: {node.var_type}")
     
-    print(f"Deklaracja macierzy {node.name} typu {node.var_type}[{node.rows}][{node.cols}]")
+    # print(f"Deklaracja macierzy {node.name} typu {node.var_type}[{node.rows}][{node.cols}]")
     
     # Utwórz typ tablicy dla wierszy
     row_type = ir.ArrayType(element_type, node.cols)
@@ -28,7 +28,7 @@ def visit_MatrixDeclaration(self, node):
     
     # Inicjalizacja macierzy, jeśli podano wartości początkowe
     if node.initial_values:
-        print(f"Inicjalizacja macierzy {node.name} {len(node.initial_values)}x{len(node.initial_values[0]) if node.initial_values else 0} wartościami")
+        # print(f"Inicjalizacja macierzy {node.name} {len(node.initial_values)}x{len(node.initial_values[0]) if node.initial_values else 0} wartościami")
         
         # Inicjalizacja wiersz po wierszu
         for i, row_values in enumerate(node.initial_values):

@@ -12,11 +12,11 @@ def visit_Assignment(self, node):
     # Odczytaj typ zmiennej docelowej
     target_type = var_ptr.type.pointee
     
-    print(f"Przypisanie do zmiennej {node.name} typu {target_type}")
+    # print(f"Przypisanie do zmiennej {node.name} typu {target_type}")
     
     # Oblicz wartość do przypisania
     value = self.visit(node.value)
-    print(f"Wartość do przypisania typu {value.type}")
+    # print(f"Wartość do przypisania typu {value.type}")
     
     # Konwersja typu, jeśli potrzebna
     # Dla typu bool (i1) - konwersja z innych typów
@@ -47,7 +47,7 @@ def visit_Assignment(self, node):
                 # Konwersja int -> float
                 value = self.builder.sitofp(value, target_type)
     
-    print(f"Po konwersji typu: {value.type}")
+    # print(f"Po konwersji typu: {value.type}")
     
     # Zapisz wartość do zmiennej
     self.builder.store(value, var_ptr)

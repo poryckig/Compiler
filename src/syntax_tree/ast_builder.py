@@ -46,12 +46,12 @@ class ASTBuilder(langVisitor):
     
     def visitVariableDeclaration(self, ctx:langParser.VariableDeclarationContext):
         # Debugowanie
-        print("\nDebugging VariableDeclaration:")
-        print(f"getChildCount: {ctx.getChildCount()}")
-        for i in range(ctx.getChildCount()):
-            print(f"Child {i}: {ctx.getChild(i).getText()}")
-        print(f"Has ID(): {hasattr(ctx, 'ID')}")
-        print(f"Has expression(): {hasattr(ctx, 'expression')}")
+        # print("\nDebugging VariableDeclaration:")
+        # print(f"getChildCount: {ctx.getChildCount()}")
+        # for i in range(ctx.getChildCount()):
+        #     print(f"Child {i}: {ctx.getChild(i).getText()}")
+        # print(f"Has ID(): {hasattr(ctx, 'ID')}")
+        # print(f"Has expression(): {hasattr(ctx, 'expression')}")
         
         type_node = ctx.getChild(0)
         var_type = type_node.getText()
