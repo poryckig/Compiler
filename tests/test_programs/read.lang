@@ -1,3 +1,130 @@
+// Test podstawowych typów
 int x;
+print "Podaj liczbe calkowita: ";
 read x;
+print "Wczytana liczba: ";
 print x;
+
+bool b;
+print "Podaj wartosc logiczna (0 lub 1): ";
+read b;
+print "Wczytana wartosc logiczna: ";
+print b;
+
+float f;
+print "Podaj liczbe zmiennoprzecinkowa: ";
+read f;
+print "Wczytana liczba zmiennoprzecinkowa: ";
+print f;
+
+// Test odczytu do zmiennych po przypisaniu wartości początkowych
+int y = 100;
+print "Aktualna wartosc y: ";
+print y;
+print "Podaj nowa wartosc dla y: ";
+read y;
+print "Nowa wartosc y: ";
+print y;
+
+// Test operacji arytmetycznych na odczytanych wartościach
+int a;
+int b2;
+print "Podaj pierwsza liczbe: ";
+read a;
+print "Podaj druga liczbe: ";
+read b2;
+print "Suma: ";
+print a + b2;
+print "Roznica: ";
+print a - b2;
+print "Iloczyn: ";
+print a * b2;
+print "Iloraz: ";
+print a / b2;
+
+// Test odczytu do tablic
+int arr[3];
+print "Podaj trzy elementy tablicy:";
+print "Element 1: ";
+read arr[0];
+print "Element 2: ";
+read arr[1];
+print "Element 3: ";
+read arr[2];
+print "Elementy tablicy:";
+print arr[0];
+print arr[1];
+print arr[2];
+print "Suma elementow tablicy: ";
+print arr[0] + arr[1] + arr[2];
+
+// Test odczytu do macierzy
+int matrix[2][3];
+print "Podaj wartosci do macierzy 2x3:";
+
+print "Wiersz 1, Kolumna 1: ";
+read matrix[0][0];
+print "Wiersz 1, Kolumna 2: ";
+read matrix[0][1];
+print "Wiersz 1, Kolumna 3: ";
+read matrix[0][2];
+
+print "Wiersz 2, Kolumna 1: ";
+read matrix[1][0];
+print "Wiersz 2, Kolumna 2: ";
+read matrix[1][1];
+print "Wiersz 2, Kolumna 3: ";
+read matrix[1][2];
+
+print "Wartosci w macierzy:";
+print "Wiersz 1: ";
+print matrix[0][0];
+print matrix[0][1];
+print matrix[0][2];
+print "Wiersz 2: ";
+print matrix[1][0];
+print matrix[1][1];
+print matrix[1][2];
+
+// Operacje na danych z macierzy
+print "Suma wszystkich elementow macierzy: ";
+print matrix[0][0] + matrix[0][1] + matrix[0][2] + matrix[1][0] + matrix[1][1] + matrix[1][2];
+
+print "Suma pierwszego wiersza: ";
+print matrix[0][0] + matrix[0][1] + matrix[0][2];
+
+print "Suma pierwszej kolumny: ";
+print matrix[0][0] + matrix[1][0];
+
+// Test z różnymi typami danych w macierzy
+float matrix_float[2][2];
+print "Podaj wartosci zmiennoprzecinkowe do macierzy 2x2:";
+print "Wiersz 1, Kolumna 1: ";
+read matrix_float[0][0];
+print "Wiersz 1, Kolumna 2: ";
+read matrix_float[0][1];
+print "Wiersz 2, Kolumna 1: ";
+read matrix_float[1][0];
+print "Wiersz 2, Kolumna 2: ";
+read matrix_float[1][1];
+
+print "Wartosci w macierzy float:";
+print matrix_float[0][0];
+print matrix_float[0][1];
+print matrix_float[1][0];
+print matrix_float[1][1];
+
+// Obliczanie wartości średniej
+float avg;
+avg = (matrix_float[0][0] + matrix_float[0][1] + matrix_float[1][0] + matrix_float[1][1]) / 4;
+print "Srednia wartosc w macierzy float: ";
+print avg;
+
+// Test warunków z odczytanymi wartościami
+int age;
+print "Podaj wiek: ";
+read age;
+bool is_adult;
+is_adult = age >= 18;
+print "Czy osoba jest pelnoletnia: ";
+print is_adult;
