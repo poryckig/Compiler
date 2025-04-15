@@ -64,17 +64,17 @@ class LLVMGenerator:
         self.builder = ir.IRBuilder(self.entry_block)
     
     def declare_external_functions(self):
-        # Deklaracja printf dla instrukcji print - bez prefiksu podkreślenia
+        # Deklaracja niestandardowej funkcji my_printf dla instrukcji print
         printf_type = ir.FunctionType(
             self.int_type, [ir.PointerType(ir.IntType(8))], var_arg=True
         )
-        self.printf_func = ir.Function(self.module, printf_type, name="printf")
+        self.printf_func = ir.Function(self.module, printf_type, name="my_printf")
         
-        # Deklaracja scanf dla instrukcji read - bez prefiksu podkreślenia
+        # Deklaracja niestandardowej funkcji my_scanf dla instrukcji read
         scanf_type = ir.FunctionType(
             self.int_type, [ir.PointerType(ir.IntType(8))], var_arg=True
         )
-        self.scanf_func = ir.Function(self.module, scanf_type, name="scanf")
+        self.scanf_func = ir.Function(self.module, scanf_type, name="my_scanf")
     
     def generate(self, ast):
         # Generowanie kodu z AST

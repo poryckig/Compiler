@@ -16,10 +16,15 @@ class ASTBuilder(langVisitor):
         return Program(statements)
 
     def visitStatement(self, ctx:langParser.StatementContext):
+        print(f"Statement children: {[ctx.getChild(i).getText() for i in range(ctx.getChildCount())]}")
         # Odwiedź bezpośrednio dziecko (variableDeclaration, assignment, itd.)
         for i in range(ctx.getChildCount()):
             child = ctx.getChild(i)
-            if child.getText() != ';':  # Pomijamy średnik
+            child_text = child.getText()
+            print(f"Child {i}: {child_text}, type: {type(child).__name__}")
+            if child_text.startswith('read'):
+                print("Found read statement!")
+            if child_text != ';':  # Pomijamy średnik
                 return self.visit(child)
         return None
 
@@ -140,7 +145,10 @@ class ASTBuilder(langVisitor):
         return PrintStatement(expr)
 
     def visitReadStatement(self, ctx:langParser.ReadStatementContext):
+        print("Debug - visitReadStatement called")
+        print(f"Context children: {[ctx.getChild(i).getText() for i in range(ctx.getChildCount())]}")
         name = ctx.ID().getText()
+        print(f"Read statement for variable: {name}")
         return ReadStatement(name)
     
 #           * * * * ARRAY * * * * 
@@ -364,3 +372,14 @@ class ASTBuilder(langVisitor):
         name = ctx.ID().getText()
         value = self.visit(ctx.expression())
         return Assignment(name, value)
+    
+    def visitSimpleRead(self, ctx):
+        print("Debug - visitSimpleRead called")
+        name = ctx.ID().getText()
+        print(f"Simple read for variable: {name}")
+        return ReadStatement(name)
+    
+    def visitArrayRead(self, ctx):
+        name = ctx.ID().getText()
+        index = self.visit(ctx.expression())
+        return ReadStatement(name, index=index)
