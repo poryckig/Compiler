@@ -136,7 +136,8 @@ class ASTBuilder(langVisitor):
         return IntegerLiteral(value)
 
     def visitFloatLiteral(self, ctx):
-        value = float(ctx.FLOAT().getText())
+        value_text = ctx.FLOAT().getText()
+        value = float(value_text)
         return FloatLiteral(value)
     
 #           * * * * I/O * * * * 

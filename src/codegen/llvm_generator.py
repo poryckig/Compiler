@@ -9,7 +9,7 @@ from src.actions.declare_generator import visit_VariableDeclaration
 from src.actions.assign_generator import visit_Assignment
 from src.actions.operations.binary_operation_generator import visit_BinaryOperation, _generate_short_circuit_and, _generate_short_circuit_or
 from src.actions.operations.logical_operation_generator import visit_OrExpr, visit_AndExpr, visit_NotExpr, visit_CompareExpr, visit_UnaryOperation
-from src.IO.IO_generator import visit_PrintStatement, visit_ReadStatement
+from src.IO.IO_generator import visit_PrintStatement, handle_float_read, visit_ReadStatement
 from src.array.array_generator import visit_ArrayDeclaration, visit_ArrayAccess, visit_ArrayAssignment
 from src.matrix.matrix_generator import visit_MatrixDeclaration, visit_MatrixAccess, visit_MatrixAssignment, _emit_matrix_error_message, _check_matrix_bounds_and_store
 from src.variables.string_generator import visit_StringLiteral
@@ -31,8 +31,8 @@ class LLVMGenerator:
         
         # Przygotowanie typów
         self.int_type = ir.IntType(32)
-        self.float_type = ir.FloatType()
-        self.double_type = ir.DoubleType()
+        self.float_type = ir.FloatType()      # 32-bitowy float (float32)
+        self.double_type = ir.DoubleType()    # 64-bitowy float (float64)
         self.void_type = ir.VoidType()
         
         # Słownik zmiennych (symbol table)
@@ -64,13 +64,13 @@ class LLVMGenerator:
         self.builder = ir.IRBuilder(self.entry_block)
     
     def declare_external_functions(self):
-        # Deklaracja niestandardowej funkcji my_printf dla instrukcji print
+        # Deklaracja printf dla instrukcji print
         printf_type = ir.FunctionType(
             self.int_type, [ir.PointerType(ir.IntType(8))], var_arg=True
         )
         self.printf_func = ir.Function(self.module, printf_type, name="my_printf")
         
-        # Deklaracja niestandardowej funkcji my_scanf dla instrukcji read
+        # Deklaracja scanf dla instrukcji read
         scanf_type = ir.FunctionType(
             self.int_type, [ir.PointerType(ir.IntType(8))], var_arg=True
         )
@@ -101,7 +101,24 @@ class LLVMGenerator:
         # Odwiedź wszystkie instrukcje programu
         for stmt in node.statements:
             self.visit(stmt)
+            
+    def get_llvm_type(self, type_name):
+        """Zwraca typ LLVM odpowiadający nazwie typu z języka."""
+        print(f"DEBUG get_llvm_type: Mapowanie typu {type_name}")
+        if type_name == 'int':
+            return self.int_type
+        elif type_name == 'float' or type_name == 'float32':
+            return self.float_type
+        elif type_name == 'float64':
+            return self.double_type
+        elif type_name == 'bool':
+            return ir.IntType(1)
+        elif type_name == 'string':
+            return ir.PointerType(ir.IntType(8))
+        else:
+            raise ValueError(f"Nieznany typ: {type_name}")
 
+# Przypisanie metod do klasy
 LLVMGenerator.visit_Variable = visit_Variable
 LLVMGenerator.visit_IntegerLiteral = visit_IntegerLiteral
 LLVMGenerator.visit_FloatLiteral = visit_FloatLiteral
@@ -127,6 +144,7 @@ LLVMGenerator._check_matrix_bounds_and_store = _check_matrix_bounds_and_store
 LLVMGenerator.visit_StringLiteral = visit_StringLiteral
 
 LLVMGenerator.visit_BoolLiteral = visit_BoolLiteral
+
 LLVMGenerator.visit_OrExpr = visit_OrExpr
 LLVMGenerator.visit_AndExpr = visit_AndExpr
 LLVMGenerator.visit_NotExpr = visit_NotExpr
@@ -135,3 +153,5 @@ LLVMGenerator.visit_UnaryOperation = visit_UnaryOperation
 
 LLVMGenerator._generate_short_circuit_and = _generate_short_circuit_and
 LLVMGenerator._generate_short_circuit_or = _generate_short_circuit_or
+
+LLVMGenerator.handle_float_read = handle_float_read

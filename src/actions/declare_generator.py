@@ -3,66 +3,80 @@ import llvmlite.ir as ir
 def visit_VariableDeclaration(self, node):
     """Generuje kod LLVM dla deklaracji zmiennej."""
     # Określ typ LLVM na podstawie typu zmiennej
-    if node.var_type == 'int':
-        var_type = self.int_type
+    var_type = self.get_llvm_type(node.var_type)
+    
+    # Debugowanie
+    print(f"Deklaracja zmiennej {node.name} typu {var_type}")
+    
+    # Alokuj zmienną na stosie
+    var_ptr = self.builder.alloca(var_type, name=node.name)
+    
+    # Tworzenie domyślnej wartości (0) dla odpowiedniego typu
+    if isinstance(var_type, ir.IntType):
         default_value = ir.Constant(var_type, 0)
-    elif node.var_type == 'float':
-        var_type = self.float_type
+    elif isinstance(var_type, ir.FloatType):
         default_value = ir.Constant(var_type, 0.0)
-    elif node.var_type == 'string':
-        # Dla stringa używamy wskaźnika do i8
-        var_type = ir.PointerType(ir.IntType(8))
-        
-        # Domyślna wartość to pusty string
+    elif isinstance(var_type, ir.DoubleType):
+        default_value = ir.Constant(var_type, 0.0)
+    elif isinstance(var_type, ir.PointerType):
+        # Dla stringa - pusty string
         empty_str = "\0"
         empty_bytes = empty_str.encode('utf-8')
         empty_type = ir.ArrayType(ir.IntType(8), len(empty_bytes))
         empty_const = ir.Constant(empty_type, bytearray(empty_bytes))
         
-        # Stwórz globalną zmienną dla pustego stringa
         global_id = f"empty_str.{next(self._global_counter)}"
         empty_global = ir.GlobalVariable(self.module, empty_type, name=global_id)
         empty_global.linkage = 'private'
         empty_global.global_constant = True
         empty_global.initializer = empty_const
         
-        # Domyślną wartością jest wskaźnik do pustego stringa
         zero = ir.Constant(self.int_type, 0)
         default_value = self.builder.gep(empty_global, [zero, zero], name=f"{global_id}_ptr")
-    
-    elif node.var_type == 'bool':
-        # Dla typu logicznego używamy 1-bitowego typu całkowitego
-        var_type = ir.IntType(1)
-        default_value = ir.Constant(var_type, 0)  # false jako wartość domyślna
     else:
         raise ValueError(f"Nieznany typ zmiennej: {node.var_type}")
     
-    # Debugowanie
-    # print(f"Deklaracja zmiennej {node.name} typu {var_type}")
-    
-    # Alokuj zmienną na stosie
-    var_ptr = self.builder.alloca(var_type, name=node.name)
-    
-    # Inicjalizuj zmienną zerami/pustym stringiem
+    # Inicjalizacja zmiennej wartością domyślną
     self.builder.store(default_value, var_ptr)
-    # print(f"Inicjalizacja zmiennej {node.name} zerami")
+    print(f"Inicjalizacja zmiennej {node.name} wartością domyślną")
     
     # Zapisz wskaźnik do tablicy symboli
     self.symbol_table[node.name] = var_ptr
     
     # Jeśli jest wartość początkowa, przypisz ją
     if node.initial_value:
-        # print(f"Inicjalizacja zmiennej {node.name}")
+        print(f"Inicjalizacja zmiennej {node.name} wartością początkową")
         value = self.visit(node.initial_value)
-        # print(f"Wartość początkowa typu {value.type}")
+        print(f"Wartość początkowa typu {value.type}")
         
-        # Automatyczna konwersja typów, jeśli potrzebna
+        # DODANA SEKCJA: Załaduj wartość ze wskaźnika, jeśli to wskaźnik (ale nie string)
+        if isinstance(value.type, ir.PointerType) and not (isinstance(value.type.pointee, ir.IntType) and value.type.pointee.width == 8):
+            print(f"Ładowanie wartości ze wskaźnika typu: {value.type.pointee}")
+            value = self.builder.load(value)
+            print(f"Po załadowaniu typ wartości: {value.type}")
+        
+        # Teraz konwertujemy wartość początkową do typu zmiennej, jeśli potrzeba
         if isinstance(var_type, ir.IntType) and isinstance(value.type, ir.FloatType):
             value = self.builder.fptosi(value, var_type)
+            print(f"Konwersja float -> int")
+        elif isinstance(var_type, ir.IntType) and isinstance(value.type, ir.DoubleType):
+            value = self.builder.fptosi(value, var_type)
+            print(f"Konwersja double -> int")
         elif isinstance(var_type, ir.FloatType) and isinstance(value.type, ir.IntType):
             value = self.builder.sitofp(value, var_type)
+            print(f"Konwersja int -> float")
+        elif isinstance(var_type, ir.FloatType) and isinstance(value.type, ir.DoubleType):
+            value = self.builder.fptrunc(value, var_type)
+            print(f"Konwersja double -> float")
+        elif isinstance(var_type, ir.DoubleType) and isinstance(value.type, ir.IntType):
+            value = self.builder.sitofp(value, var_type)
+            print(f"Konwersja int -> double")
+        elif isinstance(var_type, ir.DoubleType) and isinstance(value.type, ir.FloatType):
+            value = self.builder.fpext(value, var_type)
+            print(f"Konwersja float -> double")
         
+        # Zapisz wartość początkową
         self.builder.store(value, var_ptr)
-        # print(f"Zmienna {node.name} zainicjalizowana")
-        
+        print(f"Zmienna {node.name} zainicjalizowana wartością początkową")
+    
     return var_ptr

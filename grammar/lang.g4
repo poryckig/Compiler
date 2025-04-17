@@ -27,9 +27,11 @@ matrixInitializer
 
 type
     : 'int'
-    | 'float'
+    | 'float'       // Domyślny typ zmiennoprzecinkowy (float32)
+    | 'float32'     // 32-bitowy typ zmiennoprzecinkowy (single precision)
+    | 'float64'     // 64-bitowy typ zmiennoprzecinkowy (double precision)
     | 'string'
-    | 'bool'                                             // Typ logiczny
+    | 'bool'
     ;
 
 assignment

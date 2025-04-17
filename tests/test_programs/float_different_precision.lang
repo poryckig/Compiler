@@ -1,0 +1,59 @@
+// Prosty test typów zmiennoprzecinkowych
+float32 f32 = 3.14;
+float64 f64 = 3.14159265359;
+float f = 2.71828;
+
+// Wyswietlenie podstawowych wartości
+print "Wartosc float32: ";
+print f32;
+print "Wartosc float64: ";
+print f64;
+print "Wartosc float (domyslny): ";
+print f;
+
+// Operacje arytmetyczne
+float32 suma32 = f32 + f;
+float64 suma64 = f64 + f;
+
+print "Suma float32: ";
+print suma32;
+print "Suma float64: ";
+print suma64;
+
+// Konwersje typów
+float64 f32_do_f64 = f32;
+float32 f64_do_f32 = f64;
+
+print "Konwersja float32 -> float64: ";
+print f32_do_f64;
+print "Konwersja float64 -> float32: ";
+print f64_do_f32;
+
+// Test dokladnosci - dzielenie
+float32 wynik32 = 1.0 / 3.0;
+float64 wynik64 = 1.0 / 3.0;
+
+print "1/3 jako float32: ";
+print wynik32;
+print "1/3 jako float64: ";
+print wynik64;
+
+// Odczyt wartosci od uzytkownika
+print "Podaj wartosc float32: ";
+read f32;
+print "Podaj wartosc float64: ";
+read f64;
+
+print "Wczytana wartosc float32: ";
+print f32;
+print "Wczytana wartosc float64: ";
+print f64;
+
+// Sprawdzenie dzialania na wiekszych liczbach
+float32 duza32 = 1000000.0 * 1000000.0;
+float64 duza64 = 1000000.0 * 1000000.0;
+
+print "Duza liczba jako float32: ";
+print duza32;
+print "Duza liczba jako float64: ";
+print duza64;
