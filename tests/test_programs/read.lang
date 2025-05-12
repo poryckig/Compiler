@@ -17,6 +17,12 @@ read f;
 print "Wczytana liczba zmiennoprzecinkowa: ";
 print f;
 
+string str;
+print "Podaj string: ";
+read str;
+print "Wczytana wartosc string: ";
+print str;
+
 // Test odczytu do zmiennych po przypisaniu wartości początkowych
 int y = 100;
 print "Aktualna wartosc y: ";
