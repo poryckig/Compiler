@@ -1,0 +1,138 @@
+print "=== Test instrukcji warunkowej if ===";
+
+int x = 75;
+
+if (x > 90) {
+    print "Grade: A";
+} else if (x > 80) {
+    print "Grade: B";
+} else if (x > 70) {
+    print "Grade: C";
+} else if (x > 60) {
+    print "Grade: D";
+} else {
+    print "Grade: F";
+}
+
+print "=== Test zagniezdzonych instrukcji warunkowych if ===";
+
+int num = 15;
+
+if (num > 0) {
+    print "Positive number";
+    if (num % 2 == 0) {
+        print "Even number";
+    } else {
+        print "Odd number";
+    }
+} else if (num < 0) {
+    print "Negative number";
+    if (num % 2 == 0) {
+        print "Even number";
+    } else {
+        print "Odd number";
+    }
+} else {
+    print "Zero";
+}
+
+print "=== Test instrukcji warunkowej switch ===";
+
+int option = 2;
+
+switch (option) {
+    case 1:
+        print "Option 1 selected";
+        break;
+    case 2:
+        print "Option 2 selected";
+        break;
+    case 3:
+        print "Option 3 selected";
+        break;
+    default:
+        print "Unknown option";
+        break;
+}
+print "=== Test przechodzenia do kolejnych case ===";
+
+int state = 1;
+
+switch (state) {
+    case 1:
+        print "State 1: Starting process";
+        // Brak break - przechodzi do case 2
+    case 2:
+        print "State 2: Processing";
+        break;
+    case 3:
+        print "State 3: Finalizing";
+        break;
+    default:
+        print "Unknown state";
+        break;
+}
+
+print "=== Test 'default' ===";
+
+int code = 5;
+
+switch (code) {
+    case 1:
+        print "Error code: 1";
+        break;
+    case 2:
+        print "Error code: 2";
+        break;
+    case 3:
+        print "Error code: 3";
+        break;
+    default:
+        print "Unrecognized error code";
+        break;
+}
+
+print "=== Test petli while ===";
+
+int i = 0;
+int sum = 0;
+
+while (i < 5) {
+    print "Iteration:";
+    print i;
+    sum = sum + i;
+    i = i + 1;
+}
+
+print "Sum of numbers from 0 to 4:";
+print sum;
+
+print "=== Test petli for ===";
+
+for (int j = 0; j < 5; j = j + 1) {
+    print "j value:";
+    print j;
+}
+
+print "=== Test zagniezdzonych petli ===";
+
+print "Multiplication table 3x3:";
+for (int row = 1; row <= 3; row = row + 1) {
+    for (int col = 1; col <= 3; col = col + 1) {
+        print row * col;
+    }
+}
+
+print "=== Test petli z instrukcja warunkowa ===";
+
+int counter = 0;
+while (counter < 10) {
+    if (counter % 2 == 0) {
+        print "Even:";
+        print counter;
+    } else {
+        print "Odd:";
+        print counter;
+    }
+    counter = counter + 1;
+}

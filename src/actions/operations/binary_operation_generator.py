@@ -160,6 +160,37 @@ def visit_BinaryOperation(self, node):
         else:
             print("Wykonywanie operacji sdiv")
             result = self.builder.sdiv(left, right)
+    elif node.operator == '%':
+        # Operacja modulo (reszta z dzielenia)
+        if is_double_operation or is_float_operation:
+            # Dla liczb zmiennoprzecinkowych, implementujemy modulo jako:
+            # x % y = x - y * floor(x / y)
+            # Najpierw dzielimy x przez y
+            div_result = self.builder.fdiv(left, right)
+            
+            # Następnie używamy funkcji floor z biblioteki math.h
+            floor_func_type = ir.FunctionType(left.type, [left.type])
+            if is_double_operation:
+                floor_func = self.module.get_global('floor')
+                if not floor_func:
+                    floor_func = ir.Function(self.module, floor_func_type, name="floor")
+            else:  # float
+                floor_func = self.module.get_global('floorf')
+                if not floor_func:
+                    floor_func = ir.Function(self.module, floor_func_type, name="floorf")
+            
+            # Wywołujemy floor(x / y)
+            floor_result = self.builder.call(floor_func, [div_result])
+            
+            # Mnożymy floor(x / y) przez y
+            mul_result = self.builder.fmul(floor_result, right)
+            
+            # Odejmujemy od x
+            result = self.builder.fsub(left, mul_result)
+        else:
+            # Dla liczb całkowitych używamy operatora srem (signed remainder)
+            print("Wykonywanie operacji srem (modulo)")
+            result = self.builder.srem(left, right)
     else:
         raise ValueError(f"Nieznany operator: {node.operator}")
     

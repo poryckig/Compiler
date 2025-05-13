@@ -15,6 +15,8 @@ from src.matrix.matrix_generator import visit_MatrixDeclaration, visit_MatrixAcc
 from src.variables.string_generator import visit_StringLiteral
 from src.variables.bool_generator import visit_BoolLiteral
 
+from src.actions.control_flow_generator import visit_IfStatement, visit_SwitchStatement, visit_BreakStatement, visit_WhileStatement, visit_ForStatement, visit_Block
+
 class LLVMGenerator:
     def __init__(self):
         # Inicjalizacja LLVM
@@ -155,3 +157,10 @@ LLVMGenerator._generate_short_circuit_and = _generate_short_circuit_and
 LLVMGenerator._generate_short_circuit_or = _generate_short_circuit_or
 
 LLVMGenerator.handle_float_read = handle_float_read
+
+LLVMGenerator.visit_IfStatement = visit_IfStatement
+LLVMGenerator.visit_SwitchStatement = visit_SwitchStatement
+LLVMGenerator.visit_BreakStatement = visit_BreakStatement
+LLVMGenerator.visit_WhileStatement = visit_WhileStatement
+LLVMGenerator.visit_ForStatement = visit_ForStatement
+LLVMGenerator.visit_Block = visit_Block

@@ -105,3 +105,49 @@ class UnaryOperation(ASTNode):
     def __init__(self, operator, operand):
         self.operator = operator
         self.operand = operand
+        
+#           * * * * IF * * * *   
+class IfStatement:
+    def __init__(self, condition, then_block, else_block=None):
+        self.condition = condition
+        self.then_block = then_block
+        self.else_block = else_block  # Może być None, Block lub zagnieżdżony IfStatement
+
+#           * * * * SWITCH * * * *   
+class SwitchStatement:
+    def __init__(self, expression, cases, default_case=None):
+        self.expression = expression
+        self.cases = cases  # Lista par (wartość, blok)
+        self.default_case = default_case  # Opcjonalny blok domyślny
+
+class SwitchCase:
+    def __init__(self, value, statements):
+        self.value = value
+        self.statements = statements
+
+class DefaultCase:
+    def __init__(self, statements):
+        self.statements = statements
+
+class BreakStatement:
+    def __init__(self):
+        pass  # Nie potrzeba żadnych parametrów dla break
+
+#           * * * * WHILE * * * * 
+class WhileStatement:
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+
+#           * * * * FOR * * * * 
+class ForStatement:
+    def __init__(self, init, condition, update, body):
+        self.init = init
+        self.condition = condition
+        self.update = update
+        self.body = body
+
+#           * * * * BLOCK * * * * 
+class Block:
+    def __init__(self, statements):
+        self.statements = statements if statements else []

@@ -7,6 +7,12 @@ statement
     | assignment ';'
     | printStatement ';'
     | readStatement ';'
+    | ifStatement
+    | whileStatement
+    | forStatement
+    | switchStatement
+    | blockStatement
+    | breakStatement ';'
     | ';'
     ;
 
@@ -86,7 +92,7 @@ additiveExpression
     ;
 
 multiplicativeExpression
-    : primaryExpression (('*' | '/') primaryExpression)*
+    : primaryExpression (('*' | '/' | '%') primaryExpression)*
     ;
 
 primaryExpression
@@ -98,6 +104,48 @@ primaryExpression
     | FLOAT
     | STRING
     | BOOL
+    ;
+
+ifStatement
+    : 'if' '(' expression ')' blockStatement
+      ('else' (ifStatement | blockStatement))?
+    ;
+
+switchStatement
+    : 'switch' '(' expression ')' '{' switchCase* defaultCase? '}'
+    ;
+
+switchCase
+    : 'case' expression ':' statement*
+    ;
+
+defaultCase
+    : 'default' ':' statement*
+    ;
+
+breakStatement
+    : 'break'
+    ;
+
+whileStatement
+    : 'while' '(' expression ')' blockStatement
+    ;
+
+forStatement
+    : 'for' '(' forInit? ';' expression? ';' forUpdate? ')' blockStatement
+    ;
+
+forInit
+    : variableDeclaration
+    | assignment
+    ;
+
+forUpdate
+    : expression
+    ;
+
+blockStatement
+    : '{' statement* '}'
     ;
 
 ID: [a-zA-Z][a-zA-Z0-9_]*;

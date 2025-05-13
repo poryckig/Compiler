@@ -384,3 +384,80 @@ class ASTBuilder(langVisitor):
         name = ctx.ID().getText()
         index = self.visit(ctx.expression())
         return ReadStatement(name, index=index)
+    
+    def visitIfStatement(self, ctx:langParser.IfStatementContext):
+        condition = self.visit(ctx.expression())
+        then_block = self.visit(ctx.blockStatement(0))
+        
+        else_block = None
+        if ctx.getChildCount() > 5:  # Jeśli jest 'else'
+            if ctx.ifStatement():  # else if
+                else_block = self.visit(ctx.ifStatement())
+            else:  # else { ... }
+                else_block = self.visit(ctx.blockStatement(1))
+        
+        return IfStatement(condition, then_block, else_block)
+
+    def visitSwitchStatement(self, ctx:langParser.SwitchStatementContext):
+        expression = self.visit(ctx.expression())
+        
+        cases = []
+        for case_ctx in ctx.switchCase():
+            case_value = self.visit(case_ctx.expression())
+            case_statements = []
+            for stmt_ctx in case_ctx.statement():
+                stmt = self.visit(stmt_ctx)
+                if stmt:
+                    case_statements.append(stmt)
+            cases.append(SwitchCase(case_value, case_statements))
+        
+        default_case = None
+        if ctx.defaultCase():
+            default_statements = []
+            for stmt_ctx in ctx.defaultCase().statement():
+                stmt = self.visit(stmt_ctx)
+                if stmt:
+                    default_statements.append(stmt)
+            default_case = DefaultCase(default_statements)
+        
+        return SwitchStatement(expression, cases, default_case)
+
+    def visitBreakStatement(self, ctx:langParser.BreakStatementContext):
+        return BreakStatement()
+
+    def visitWhileStatement(self, ctx:langParser.WhileStatementContext):
+        condition = self.visit(ctx.expression())
+        body = self.visit(ctx.blockStatement())
+        return WhileStatement(condition, body)
+
+    def visitForStatement(self, ctx:langParser.ForStatementContext):
+        # Inicjalizacja
+        init = None
+        if ctx.forInit():
+            if ctx.forInit().variableDeclaration():
+                init = self.visit(ctx.forInit().variableDeclaration())
+            elif ctx.forInit().assignment():
+                init = self.visit(ctx.forInit().assignment())
+        
+        # Warunek
+        condition = None
+        if ctx.expression():
+            condition = self.visit(ctx.expression())
+        
+        # Aktualizacja
+        update = None
+        if ctx.forUpdate():
+            update = self.visit(ctx.forUpdate().expression())
+        
+        # Ciało pętli
+        body = self.visit(ctx.blockStatement())
+        
+        return ForStatement(init, condition, update, body)
+
+    def visitBlockStatement(self, ctx:langParser.BlockStatementContext):
+        statements = []
+        for stmt_ctx in ctx.statement():
+            stmt = self.visit(stmt_ctx)
+            if stmt:
+                statements.append(stmt)
+        return Block(statements)
