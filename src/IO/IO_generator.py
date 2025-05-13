@@ -3,12 +3,30 @@ import llvmlite.binding as llvm
 
 def visit_PrintStatement(self, node):
     """Generuje kod LLVM dla instrukcji print."""
-    
-    # Dodaj debugging dla identyfikacji duplikacji
+    # Dodaj informację debugowania
     print(f"DEBUG: Przetwarzam instrukcję print: {id(node)}")
     
     # Oblicz wartość do wydrukowania
     value = self.visit(node.expression)
+    
+    # Sprawdź, czy wartość ma typ void (co może się zdarzyć po wywołaniu funkcji void)
+    if isinstance(value.type, ir.VoidType):
+        # Dla void drukujemy tylko komunikat "void"
+        format_str = "void\n\0"
+        format_bytes = format_str.encode("ascii")
+        format_type = ir.ArrayType(ir.IntType(8), len(format_bytes))
+        format_const = ir.Constant(format_type, bytearray(format_bytes))
+        
+        format_global = ir.GlobalVariable(self.module, format_type, name=f"fmt.void.{next(self._global_counter)}")
+        format_global.linkage = 'private'
+        format_global.global_constant = True
+        format_global.initializer = format_const
+        
+        format_ptr = self.builder.bitcast(format_global, ir.PointerType(ir.IntType(8)))
+        
+        # Wywołaj printf bez dodatkowych argumentów
+        self.builder.call(self.printf_func, [format_ptr])
+        return None
     
     print(f"DEBUG: Drukowanie wartości typu: {value.type}")
     

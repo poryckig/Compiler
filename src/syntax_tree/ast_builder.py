@@ -8,12 +8,20 @@ class ASTBuilder(langVisitor):
         super().__init__()
 
     def visitProgram(self, ctx:langParser.ProgramContext):
+        functions = []
         statements = []
-        for stmt_ctx in ctx.statement():
-            stmt = self.visit(stmt_ctx)
-            if stmt:
-                statements.append(stmt)
-        return Program(statements)
+        
+        for child in ctx.children:
+            if isinstance(child, langParser.FunctionDeclarationContext):
+                func = self.visit(child)
+                if func:
+                    functions.append(func)
+            elif isinstance(child, langParser.StatementContext):
+                stmt = self.visit(child)
+                if stmt:
+                    statements.append(stmt)
+        
+        return Program(statements, functions)
 
     def visitStatement(self, ctx:langParser.StatementContext):
         print(f"Statement children: {[ctx.getChild(i).getText() for i in range(ctx.getChildCount())]}")
@@ -302,16 +310,19 @@ class ASTBuilder(langVisitor):
                 return BoolLiteral(text)
         
         if ctx.getChildCount() == 3 and ctx.getChild(0).getText() == '(':
-            # Wyrażenie w nawiasach - musimy odnieść się do pierwszego elementu na liście
-            if ctx.expression() and isinstance(ctx.expression(), list):
-                # Jeśli expression() zwraca listę, bierzemy pierwszy element
-                return self.visit(ctx.expression()[0])
-            elif ctx.expression():
-                # Jeśli expression() nie zwraca listy, używamy go bezpośrednio
-                return self.visit(ctx.expression())
-            else:
-                # Jeśli nie ma expression(), odwiedzamy bezpośrednio drugie dziecko (między nawiasami)
-                return self.visit(ctx.getChild(1))
+            # Wyrażenie w nawiasach
+            expressions = ctx.expression()
+            if expressions:
+                if isinstance(expressions, list):
+                    # Jeśli expression() zwraca listę, bierzemy pierwszy element
+                    return self.visit(expressions[0])
+                else:
+                    # Jeśli expression() nie zwraca listy, używamy go bezpośrednio
+                    return self.visit(expressions)
+        
+        if ctx.functionCall():
+            # Wywołanie funkcji
+            return self.visit(ctx.functionCall())
         
         if ctx.ID():
             # Sprawdź, czy to nie jest literał logiczny
@@ -322,16 +333,18 @@ class ASTBuilder(langVisitor):
             if ctx.getChildCount() > 1:
                 if ctx.getChildCount() == 4:  # ID[expr]
                     name = ctx.ID().getText()
-                    if ctx.expression() and isinstance(ctx.expression(), list):
-                        index = self.visit(ctx.expression()[0])
+                    expressions = ctx.expression()
+                    if isinstance(expressions, list):
+                        index = self.visit(expressions[0])
                     else:
-                        index = self.visit(ctx.expression())
+                        index = self.visit(expressions)
                     return ArrayAccess(name, index)
                 else:  # ID[expr][expr]
                     name = ctx.ID().getText()
-                    if ctx.expression() and isinstance(ctx.expression(), list):
-                        row_index = self.visit(ctx.expression()[0])
-                        col_index = self.visit(ctx.expression()[1])
+                    expressions = ctx.expression()
+                    if isinstance(expressions, list):
+                        row_index = self.visit(expressions[0])
+                        col_index = self.visit(expressions[1])
                     else:
                         # Ten przypadek powinien być obsługiwany inaczej, bo potrzebujemy dwóch indeksów
                         raise ValueError("Niepoprawna struktura dostępu do macierzy")
@@ -351,18 +364,12 @@ class ASTBuilder(langVisitor):
         if ctx.BOOL():
             return BoolLiteral(ctx.BOOL().getText())
         
-        # Jeśli żaden z przypadków nie pasuje, wypisz strukturę kontekstu dla debugowania
+        # Jeśli żaden z przypadków nie pasuje, wypisz strukturę kontekstu
         print("DEBUG: Struktura primaryExpression:")
         for i in range(ctx.getChildCount()):
             print(f"Child {i}: {ctx.getChild(i).getText()}")
         if hasattr(ctx, 'expression'):
             print(f"Expression method: {ctx.expression()}")
-            if ctx.expression():
-                print(f"Expression type: {type(ctx.expression())}")
-                if isinstance(ctx.expression(), list):
-                    print(f"Expression list length: {len(ctx.expression())}")
-                    for i, expr in enumerate(ctx.expression()):
-                        print(f"Expression[{i}]: {expr.getText()}")
         
         raise ValueError(f"Nieobsługiwany przypadek w primaryExpression: {ctx.getText()}")
     
@@ -461,3 +468,36 @@ class ASTBuilder(langVisitor):
             if stmt:
                 statements.append(stmt)
         return Block(statements)
+
+    def visitFunctionDeclaration(self, ctx:langParser.FunctionDeclarationContext):
+        return_type = ctx.type_().getText()
+        name = ctx.ID().getText()
+        
+        parameters = []
+        if ctx.parameterList():
+            for param_ctx in ctx.parameterList().parameter():
+                param_type = param_ctx.type_().getText()
+                param_name = param_ctx.ID().getText()
+                parameters.append(Parameter(param_type, param_name))
+        
+        body = self.visit(ctx.blockStatement())
+        
+        return FunctionDeclaration(return_type, name, parameters, body)
+
+    def visitFunctionCall(self, ctx:langParser.FunctionCallContext):
+        name = ctx.ID().getText()
+        
+        arguments = []
+        if ctx.argumentList():
+            for expr_ctx in ctx.argumentList().expression():
+                argument = self.visit(expr_ctx)
+                arguments.append(argument)
+        
+        return FunctionCall(name, arguments)
+
+    def visitReturnStatement(self, ctx:langParser.ReturnStatementContext):
+        expression = None
+        if ctx.expression():
+            expression = self.visit(ctx.expression())
+        
+        return ReturnStatement(expression)

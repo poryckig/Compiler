@@ -1,6 +1,20 @@
 grammar lang;
 
-program: statement+ EOF;
+program
+    : (functionDeclaration | statement)+ EOF
+    ;
+
+functionDeclaration
+    : type ID '(' parameterList? ')' blockStatement
+    ;
+
+parameterList
+    : parameter (',' parameter)*
+    ;
+
+parameter
+    : type ID
+    ;
 
 statement
     : variableDeclaration ';'
@@ -11,9 +25,23 @@ statement
     | whileStatement
     | forStatement
     | switchStatement
+    | returnStatement ';'
+    | functionCall ';'
     | blockStatement
     | breakStatement ';'
     | ';'
+    ;
+
+functionCall
+    : ID '(' argumentList? ')'
+    ;
+
+argumentList
+    : expression (',' expression)*
+    ;
+
+returnStatement
+    : 'return' expression?
     ;
 
 variableDeclaration
@@ -38,6 +66,7 @@ type
     | 'float64'     // 64-bitowy typ zmiennoprzecinkowy (double precision)
     | 'string'
     | 'bool'
+    | 'void'        // Dodany typ void dla funkcji
     ;
 
 assignment
@@ -97,6 +126,7 @@ multiplicativeExpression
 
 primaryExpression
     : '(' expression ')'
+    | functionCall
     | ID
     | ID '[' expression ']'
     | ID '[' expression ']' '[' expression ']'

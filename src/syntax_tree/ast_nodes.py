@@ -1,9 +1,10 @@
 class ASTNode:
     pass
 
-class Program(ASTNode):
-    def __init__(self, statements):
+class Program:
+    def __init__(self, statements, functions=None):
         self.statements = statements
+        self.functions = functions or []
 
 #           * * * * DECLARATION * * * * 
 class VariableDeclaration(ASTNode):
@@ -151,3 +152,25 @@ class ForStatement:
 class Block:
     def __init__(self, statements):
         self.statements = statements if statements else []
+        
+#           * * * * FUNCTION * * * * 
+class FunctionDeclaration:
+    def __init__(self, return_type, name, parameters, body):
+        self.return_type = return_type  # Typ zwracany przez funkcję
+        self.name = name                # Nazwa funkcji
+        self.parameters = parameters    # Lista par (typ, nazwa)
+        self.body = body                # Blok kodu funkcji
+
+class Parameter:
+    def __init__(self, param_type, name):
+        self.param_type = param_type
+        self.name = name
+
+class FunctionCall:
+    def __init__(self, name, arguments):
+        self.name = name        # Nazwa wywoływanej funkcji
+        self.arguments = arguments  # Lista wyrażeń argumentów
+
+class ReturnStatement:
+    def __init__(self, expression=None):
+        self.expression = expression  # Opcjonalne wyrażenie

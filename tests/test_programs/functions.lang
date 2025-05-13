@@ -1,0 +1,177 @@
+// Funkcja zwracajaca int
+int add(int a, int b) {
+    return a + b;
+}
+
+// Funkcja zwracajaca float
+float calculateAverage(float x, float y, float z) {
+    return (x + y + z) / 3.0;
+}
+
+// Funkcja zwracajaca bool
+bool isEven(int number) {
+    return number % 2 == 0;
+}
+
+// Funkcja nic nie zwracajaca
+void getStatus(int code) {
+    if (code == 0) {
+        print "Success";
+    } else if (code == 1) {
+        print "Warning";
+    } else {
+        print "Error";
+    }
+}
+
+// Funkcja bez parametrow
+int getRandomNumber() {
+    // Udawanie losowej liczby
+    return 42;
+}
+
+// Funkcja z jednym parametrem
+int square(int x) {
+    return x * x;
+}
+
+// Funkcja rekurencyjna
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+// Funkcja uzywajaca innych funkcji
+int complexCalculation(int x, int y) {
+    int a = add(x, y);
+    int b = square(x);
+    return a + b;
+}
+
+// Funkcja void
+void printMessage(string msg) {
+    print msg;
+}
+
+// Funkcja void z instrukcja return
+void printNumberStatus(int num) {
+    if (num < 0) {
+        print "Negative number";
+        return;  // Wczesne zakonczenie
+    }
+    
+    if (isEven(num)) {
+        print "Even number";
+    } else {
+        print "Odd number";
+    }
+}
+
+// === Zmienne globalne i lokalne ===
+
+int globalVar = 100;
+
+int testScope(int localVar) {
+    // Używa zarowno zmiennej globalnej jak i lokalnej
+    return globalVar + localVar;
+}
+
+// Funkcja z konfliktem nazw
+int conflictTest(int globalVar) {
+    // Parametr ma priorytet nad zmienna globalna
+    return globalVar * 2;
+}
+
+// Funkcja zwracajaca rozne wartosci w zależnosci od warunkow
+int absoluteValue(int num) {
+    if (num >= 0) {
+        return num;
+    } else {
+        return 0 - num;
+    }
+}
+
+// Zagniezdzone wywolania funkcji
+int nestedCalls(int x) {
+    return add(factorial(3), square(x));
+}
+
+// Konwersje typow w wywolaniach funkcji
+int mixedTypes(int a, float b) {
+    float temp = a + b;
+    return temp;  // Niejawna konwersja float->int
+}
+
+// === Program glowny ===
+print "=== Test funkcji z roznymi typami zwracanymi ===";
+int sumResult = add(5, 7);
+print "5 + 7 =";
+print sumResult;
+
+float avg = calculateAverage(10.5, 20.5, 30.5);
+print "Average of 10.5, 20.5, 30.5 =";
+print avg;
+
+bool evenResult = isEven(42);
+print "Is 42 even?";
+if (evenResult) {
+    print "Yes";
+} else {
+    print "No";
+}
+
+print "Status for code 1:";
+print getStatus(1);
+
+print "=== Test funkcji z rozna liczba parametrow ===";
+print "Random number:";
+print getRandomNumber();
+
+print "Square of 8:";
+print square(8);
+
+print "=== Test rekurencji i kompozycji funkcji ===";
+print "Factorial of 5:";
+print factorial(5);
+
+print "Complex calculation for 3, 4:";
+print complexCalculation(3, 4);
+
+print "=== Test funkcji void ===";
+printMessage("This is a test message");
+
+// Użycie zmiennej dla liczby ujemnej
+int negativeNum = 0 - 5;
+print "Number status for negative number:";
+printNumberStatus(negativeNum);
+
+print "Number status for 10:";
+printNumberStatus(10);
+
+print "=== Test zmiennych globalnych i lokalnych ===";
+print "Global variable value:";
+print globalVar;
+
+print "Scope test with local = 50:";
+print testScope(50);
+
+print "Conflict test with parameter = 25:";
+print conflictTest(25);
+print "Global variable after conflict test:";
+print globalVar;  // Powinno pozostac niezmienione
+
+print "=== Test funkcji zwracajacej rozne wartosci ===";
+// Uzycie zmiennej dla liczby ujemnej
+int negativeValue = 0 - 42;
+print "Absolute value of negative number:";
+print absoluteValue(negativeValue);
+
+print "=== Test zagniezdzonych wywolan funkcji ===";
+print "Nested calls with x = 4:";
+print nestedCalls(4);
+
+print "=== Test konwersji typow ===";
+print "Mixed types: 5 + 7.5 =";
+print mixedTypes(5, 7.5);

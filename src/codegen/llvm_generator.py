@@ -16,6 +16,7 @@ from src.variables.string_generator import visit_StringLiteral
 from src.variables.bool_generator import visit_BoolLiteral
 
 from src.actions.control_flow_generator import visit_IfStatement, visit_SwitchStatement, visit_BreakStatement, visit_WhileStatement, visit_ForStatement, visit_Block
+from src.actions.function_generator import visit_FunctionDeclaration, visit_FunctionCall, visit_ReturnStatement
 
 class LLVMGenerator:
     def __init__(self):
@@ -37,8 +38,11 @@ class LLVMGenerator:
         self.double_type = ir.DoubleType()    # 64-bitowy float (float64)
         self.void_type = ir.VoidType()
         
-        # Słownik zmiennych (symbol table)
-        self.symbol_table = {}
+        # Słownik zmiennych globalnych (symbol table)
+        self.global_symbol_table = {}
+        
+        # Słownik zmiennych lokalnych dla bieżącej funkcji
+        self.local_symbol_table = {}
         
         # Licznik dla unikalnych identyfikatorów
         self._global_counter = self._make_counter()
@@ -48,6 +52,9 @@ class LLVMGenerator:
         
         # Deklaracja funkcji printf i scanf
         self.declare_external_functions()
+        
+        # Dodaj kompatybilność, mapując symbol_table na global_symbol_table
+        self.symbol_table = self.global_symbol_table
 
     def _make_counter(self):
         """Pomocnicza funkcja do generowania unikalnych identyfikatorów."""
@@ -100,10 +107,42 @@ class LLVMGenerator:
     # Implementacje metod wizytatora dla różnych typów węzłów
     
     def visit_Program(self, node):
-        # Odwiedź wszystkie instrukcje programu
-        for stmt in node.statements:
-            self.visit(stmt)
+        # KROK 1: Najpierw zarejestruj wszystkie funkcje (tylko deklaracje, bez implementacji)
+        for func in node.functions:
+            # Określ typ zwracany przez funkcję
+            return_type = self.get_llvm_type(func.return_type)
             
+            # Typy parametrów
+            param_types = [self.get_llvm_type(param.param_type) for param in func.parameters]
+            
+            # Typ funkcji (typ zwracany + typy parametrów)
+            func_type = ir.FunctionType(return_type, param_types)
+            
+            # Utwórz funkcję
+            function = ir.Function(self.module, func_type, name=func.name)
+            
+            # Ustaw nazwy parametrów
+            for i, param in enumerate(func.parameters):
+                function.args[i].name = param.name
+            
+            # Zapisz funkcję w globalnej tablicy symboli
+            self.global_symbol_table[func.name] = function
+            print(f"DEBUG: Zarejestrowano funkcję {func.name} w KROKU 1")
+        
+        # KROK 2: Przetwórz zmienne globalne
+        for stmt in node.statements:
+            if isinstance(stmt, VariableDeclaration):
+                self.visit(stmt)
+        
+        # KROK 3: Przetwórz ciała funkcji
+        for func in node.functions:
+            self.visit(func)
+        
+        # KROK 4: Przetwórz pozostałe instrukcje głównego programu
+        for stmt in node.statements:
+            if not isinstance(stmt, VariableDeclaration):
+                self.visit(stmt)
+                
     def get_llvm_type(self, type_name):
         """Zwraca typ LLVM odpowiadający nazwie typu z języka."""
         print(f"DEBUG get_llvm_type: Mapowanie typu {type_name}")
@@ -117,8 +156,30 @@ class LLVMGenerator:
             return ir.IntType(1)
         elif type_name == 'string':
             return ir.PointerType(ir.IntType(8))
+        elif type_name == 'void':
+            return ir.VoidType()
         else:
             raise ValueError(f"Nieznany typ: {type_name}")
+        
+    def get_variable(self, name):
+        """Pobiera zmienną z odpowiedniej tablicy symboli (lokalnej lub globalnej)."""
+        # Najpierw szukamy w lokalnej tablicy symboli
+        if hasattr(self, "local_symbol_table") and name in self.local_symbol_table:
+            return self.local_symbol_table[name]
+        
+        # Jeśli nie znaleziono, szukamy w globalnej tablicy
+        if name in self.global_symbol_table:
+            return self.global_symbol_table[name]
+        
+        # Jeśli nie znaleziono w żadnej tablicy, zgłoś błąd
+        raise ValueError(f"Niezadeklarowana zmienna: {name}")
+
+    def set_variable(self, name, value, is_global=False):
+        """Ustawia zmienną w odpowiedniej tablicy symboli."""
+        if is_global or not hasattr(self, "current_function"):
+            self.global_symbol_table[name] = value
+        else:
+            self.local_symbol_table[name] = value
 
 # Przypisanie metod do klasy
 LLVMGenerator.visit_Variable = visit_Variable
@@ -164,3 +225,7 @@ LLVMGenerator.visit_BreakStatement = visit_BreakStatement
 LLVMGenerator.visit_WhileStatement = visit_WhileStatement
 LLVMGenerator.visit_ForStatement = visit_ForStatement
 LLVMGenerator.visit_Block = visit_Block
+
+LLVMGenerator.visit_FunctionDeclaration = visit_FunctionDeclaration
+LLVMGenerator.visit_FunctionCall = visit_FunctionCall
+LLVMGenerator.visit_ReturnStatement = visit_ReturnStatement
