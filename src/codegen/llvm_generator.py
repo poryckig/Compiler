@@ -18,6 +18,8 @@ from src.variables.bool_generator import visit_BoolLiteral
 from src.actions.control_flow_generator import visit_IfStatement, visit_SwitchStatement, visit_BreakStatement, visit_WhileStatement, visit_ForStatement, visit_Block
 from src.actions.function_generator import visit_FunctionDeclaration, visit_FunctionCall, visit_ReturnStatement
 
+from src.structure.struct_generator import visit_StructDefinition, visit_StructDeclaration, visit_StructAccess, visit_StructAssignment
+
 class LLVMGenerator:
     def __init__(self):
         # Inicjalizacja LLVM
@@ -49,6 +51,9 @@ class LLVMGenerator:
         
         # Słownik zmiennych lokalnych dla bieżącej funkcji
         self.local_symbol_table = {}
+        
+        # Add struct type registry
+        self.struct_types = {}  # Maps struct_name -> (struct_type, [member_names], [member_types])
         
         # Licznik dla unikalnych identyfikatorów
         self._global_counter = self._make_counter()
@@ -156,6 +161,10 @@ class LLVMGenerator:
     # Implementacje metod wizytatora dla różnych typów węzłów
     
     def visit_Program(self, node):
+        # KROK 0: Process struct definitions
+        for struct_def in node.struct_definitions:
+            self.visit(struct_def)
+        
         # KROK 1: Najpierw zarejestruj wszystkie funkcje (tylko deklaracje, bez implementacji)
         for func in node.functions:
             # Określ typ zwracany przez funkcję
@@ -278,3 +287,8 @@ LLVMGenerator.visit_Block = visit_Block
 LLVMGenerator.visit_FunctionDeclaration = visit_FunctionDeclaration
 LLVMGenerator.visit_FunctionCall = visit_FunctionCall
 LLVMGenerator.visit_ReturnStatement = visit_ReturnStatement
+
+LLVMGenerator.visit_StructDefinition = visit_StructDefinition
+LLVMGenerator.visit_StructDeclaration = visit_StructDeclaration
+LLVMGenerator.visit_StructAccess = visit_StructAccess
+LLVMGenerator.visit_StructAssignment = visit_StructAssignment

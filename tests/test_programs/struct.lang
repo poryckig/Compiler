@@ -1,0 +1,25 @@
+struct Person {
+    int age;
+    string name;
+    float height;
+};
+
+void testStructs() {
+    Person p;
+    p.age = 25;
+    p.name = "John";
+    p.height = 1.82;
+    
+    print p.age;
+    print p.name;
+    print p.height;
+    
+    Person p2 = {30, "Alice", 1.65};
+    print p2.age;
+    print p2.name;
+    print p2.height;
+}
+
+print "=== Testing struct functionality ===";
+testStructs();
+print "=== Test completed ===";

@@ -1,7 +1,15 @@
 grammar lang;
 
 program
-    : (functionDeclaration | statement)+ EOF
+    : (structDefinition | functionDeclaration | statement)+ EOF
+    ;
+
+structDefinition
+    : 'struct' ID '{' structMember+ '}' ';'
+    ;
+
+structMember
+    : type ID ';'
     ;
 
 functionDeclaration
@@ -46,9 +54,14 @@ returnStatement
 
 variableDeclaration
     : type ID ('=' expression)?                          # SimpleVarDecl
+    | ID ID ('=' structInitializer)?                     # StructVarDecl
     | type ID '[' INT ']' ('=' arrayInitializer)?        # ArrayDecl
     | type ID '[' INT ']' '[' INT ']' 
         ('=' matrixInitializer)?                         # MatrixDecl
+    ;
+
+structInitializer
+    : '{' expression (',' expression)* '}'
     ;
 
 arrayInitializer
@@ -71,6 +84,7 @@ type
 
 assignment
     : ID '=' expression                                  # SimpleAssign
+    | ID '.' ID '=' expression                           # StructMemberAssign
     | ID '[' expression ']' '=' expression               # ArrayAssign
     | ID '[' expression ']' '[' expression ']' 
         '=' expression                                   # MatrixAssign
@@ -125,15 +139,16 @@ multiplicativeExpression
     ;
 
 primaryExpression
-    : '(' expression ')'
-    | functionCall
-    | ID
-    | ID '[' expression ']'
-    | ID '[' expression ']' '[' expression ']'
-    | INT
-    | FLOAT
-    | STRING
-    | BOOL
+    : '(' expression ')'                                 # ParenExpr
+    | functionCall                                       # FuncCallExpr
+    | ID '.' ID                                          # StructMemberAccess
+    | ID                                                 # VarExpr
+    | ID '[' expression ']'                              # ArrayAccessExpr
+    | ID '[' expression ']' '[' expression ']'           # MatrixAccessExpr
+    | INT                                                # IntLiteral
+    | FLOAT                                              # FloatLiteral
+    | STRING                                             # StringLiteral
+    | BOOL                                               # BoolLiteral
     ;
 
 ifStatement

@@ -10,18 +10,23 @@ class ASTBuilder(langVisitor):
     def visitProgram(self, ctx:langParser.ProgramContext):
         functions = []
         statements = []
+        struct_definitions = []
         
         for child in ctx.children:
             if isinstance(child, langParser.FunctionDeclarationContext):
                 func = self.visit(child)
                 if func:
                     functions.append(func)
+            elif isinstance(child, langParser.StructDefinitionContext):
+                struct_def = self.visit(child)
+                if struct_def:
+                    struct_definitions.append(struct_def)
             elif isinstance(child, langParser.StatementContext):
                 stmt = self.visit(child)
                 if stmt:
                     statements.append(stmt)
         
-        return Program(statements, functions)
+        return Program(statements, functions, struct_definitions)
 
     def visitStatement(self, ctx:langParser.StatementContext):
         print(f"Statement children: {[ctx.getChild(i).getText() for i in range(ctx.getChildCount())]}")
@@ -501,3 +506,38 @@ class ASTBuilder(langVisitor):
             expression = self.visit(ctx.expression())
         
         return ReturnStatement(expression)
+    
+    def visitStructDefinition(self, ctx):
+        name = ctx.ID().getText()
+        members = []
+        
+        for member_ctx in ctx.structMember():
+            member_type = member_ctx.type_().getText()
+            member_name = member_ctx.ID().getText()
+            members.append(StructMember(member_type, member_name))
+        
+        return StructDefinition(name, members)
+
+    def visitStructVarDecl(self, ctx):
+        struct_type = ctx.ID(0).getText()
+        name = ctx.ID(1).getText()
+        
+        initial_value = None
+        if ctx.structInitializer():
+            initial_values = []
+            for expr_ctx in ctx.structInitializer().expression():
+                initial_values.append(self.visit(expr_ctx))
+            initial_value = initial_values
+        
+        return StructDeclaration(struct_type, name, initial_value)
+
+    def visitStructMemberAccess(self, ctx):
+        struct_name = ctx.ID(0).getText()
+        member_name = ctx.ID(1).getText()
+        return StructAccess(struct_name, member_name)
+
+    def visitStructMemberAssign(self, ctx):
+        struct_name = ctx.ID(0).getText()
+        member_name = ctx.ID(1).getText()
+        value = self.visit(ctx.expression())
+        return StructAssignment(struct_name, member_name, value)

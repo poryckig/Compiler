@@ -2,9 +2,10 @@ class ASTNode:
     pass
 
 class Program:
-    def __init__(self, statements, functions=None):
+    def __init__(self, statements, functions=None, struct_definitions=None):
         self.statements = statements
         self.functions = functions or []
+        self.struct_definitions = struct_definitions or []
 
 #           * * * * DECLARATION * * * * 
 class VariableDeclaration(ASTNode):
@@ -174,3 +175,31 @@ class FunctionCall:
 class ReturnStatement:
     def __init__(self, expression=None):
         self.expression = expression  # Opcjonalne wyrażenie
+
+#           * * * * STRUCT * * * * 
+class StructDefinition(ASTNode):
+    def __init__(self, name, members):
+        self.name = name
+        self.members = members  # List of StructMember objects
+
+class StructMember(ASTNode):
+    def __init__(self, member_type, name):
+        self.member_type = member_type
+        self.name = name
+
+class StructDeclaration(ASTNode):
+    def __init__(self, struct_type, name, initial_value=None):
+        self.struct_type = struct_type  # The struct type name
+        self.name = name
+        self.initial_value = initial_value
+
+class StructAccess(ASTNode):
+    def __init__(self, struct_name, member_name):
+        self.struct_name = struct_name
+        self.member_name = member_name
+
+class StructAssignment(ASTNode):
+    def __init__(self, struct_name, member_name, value):
+        self.struct_name = struct_name
+        self.member_name = member_name
+        self.value = value
