@@ -158,3 +158,52 @@ def visit_StructAssignment(self, node):
     self.builder.store(value, member_ptr)
     
     return value
+
+def visit_StructToStructAssignment(self, node):
+    """Handles assignment of an entire struct to another struct."""
+    print(f"DEBUG: Struct-to-struct assignment from {node.src_name} to {node.dest_name}")
+    
+    # Get the source and destination structs
+    dest_ptr = self.find_variable(node.dest_name)
+    src_ptr = self.find_variable(node.src_name)
+    
+    # Get struct type information
+    dest_type = dest_ptr.type.pointee
+    src_type = src_ptr.type.pointee
+    
+    if not isinstance(dest_type, ir.LiteralStructType) or not isinstance(src_type, ir.LiteralStructType):
+        raise ValueError(f"Both variables in struct assignment must be structs")
+    
+    # Find the struct type names
+    dest_type_name = None
+    src_type_name = None
+    
+    for name, (type_obj, _, _) in self.struct_types.items():
+        if type_obj == dest_type:
+            dest_type_name = name
+        if type_obj == src_type:
+            src_type_name = name
+    
+    if dest_type_name != src_type_name:
+        raise ValueError(f"Cannot assign {src_type_name} to {dest_type_name}")
+    
+    # Get member information
+    _, member_names, _ = self.struct_types[dest_type_name]
+    
+    # Copy each member from source to destination
+    for i, member_name in enumerate(member_names):
+        # Get pointers to the source and destination members
+        zero = ir.Constant(self.int_type, 0)
+        index = ir.Constant(self.int_type, i)
+        
+        src_member_ptr = self.builder.gep(src_ptr, [zero, index], name=f"{node.src_name}.{member_name}")
+        dest_member_ptr = self.builder.gep(dest_ptr, [zero, index], name=f"{node.dest_name}.{member_name}")
+        
+        # Load value from source
+        src_value = self.builder.load(src_member_ptr)
+        
+        # Store in destination
+        self.builder.store(src_value, dest_member_ptr)
+    
+    print(f"DEBUG: Completed struct assignment from {node.src_name} to {node.dest_name}")
+    return None

@@ -88,8 +88,16 @@ class ASTBuilder(langVisitor):
 #           * * * * ASSIGNMENT * * * * 
     def visitSimpleAssign(self, ctx):
         name = ctx.ID().getText()
-        value = self.visit(ctx.expression())
-        return Assignment(name, value)
+        
+        # Get the right-hand side expression
+        right_side = self.visit(ctx.expression())
+        
+        # Check if it's a variable (potential struct-to-struct assignment)
+        if isinstance(right_side, Variable):
+            return StructToStructAssignment(name, right_side.name)
+        
+        # Regular assignment
+        return Assignment(name, right_side)
 
     def visitAssignment(self, ctx:langParser.AssignmentContext):
         name = ctx.ID().getText()

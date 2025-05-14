@@ -18,7 +18,7 @@ from src.variables.bool_generator import visit_BoolLiteral
 from src.actions.control_flow_generator import visit_IfStatement, visit_SwitchStatement, visit_BreakStatement, visit_WhileStatement, visit_ForStatement, visit_Block
 from src.actions.function_generator import visit_FunctionDeclaration, visit_FunctionCall, visit_ReturnStatement
 
-from src.structure.struct_generator import visit_StructDefinition, visit_StructDeclaration, visit_StructAccess, visit_StructAssignment
+from src.structure.struct_generator import visit_StructDefinition, visit_StructDeclaration, visit_StructAccess, visit_StructAssignment, visit_StructToStructAssignment
 
 class LLVMGenerator:
     def __init__(self):
@@ -292,3 +292,4 @@ LLVMGenerator.visit_StructDefinition = visit_StructDefinition
 LLVMGenerator.visit_StructDeclaration = visit_StructDeclaration
 LLVMGenerator.visit_StructAccess = visit_StructAccess
 LLVMGenerator.visit_StructAssignment = visit_StructAssignment
+LLVMGenerator.visit_StructToStructAssignment = visit_StructToStructAssignment

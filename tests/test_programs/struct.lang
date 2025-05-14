@@ -18,6 +18,23 @@ void testStructs() {
     print p2.age;
     print p2.name;
     print p2.height;
+    
+    print "\n=== Testing struct assignment ===";
+    Person p3;
+    p3 = p;  // Copy all fields from p to p3
+    
+    print "Person p3 (copy of p):";
+    print p3.age;    // Should be 25
+    print p3.name;   // Should be "John"
+    print p3.height; // Should be 1.82
+    
+    // Verify that changing p doesn't affect p3 (they're separate copies)
+    p.age = 50;
+    print "\nAfter changing p.age to 50:";
+    print "p.age: ";
+    print p.age;    // Should be 50
+    print "p3.age: ";
+    print p3.age;   // Should still be 25
 }
 
 print "=== Testing struct functionality ===";

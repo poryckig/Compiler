@@ -203,3 +203,8 @@ class StructAssignment(ASTNode):
         self.struct_name = struct_name
         self.member_name = member_name
         self.value = value
+        
+class StructToStructAssignment(ASTNode):
+    def __init__(self, dest_name, src_name):
+        self.dest_name = dest_name
+        self.src_name = src_name
