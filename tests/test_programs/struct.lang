@@ -4,7 +4,6 @@ struct Person {
     float height;
 };
 
-// New function that takes a Person struct parameter
 void displayPerson(Person p) {
     print "Person details:";
     print "Age: ";
@@ -15,7 +14,6 @@ void displayPerson(Person p) {
     print p.height;
 }
 
-// New function that returns a Person struct
 Person createPerson(int age, string name, float height) {
     Person p;
     p.age = age;
@@ -24,7 +22,6 @@ Person createPerson(int age, string name, float height) {
     return p;
 }
 
-// New function that modifies a Person struct
 void modifyPerson(Person p) {
     print "Inside modifyPerson function:";
     print "Original age: ";
@@ -70,7 +67,6 @@ void testStructs() {
     print "p3.age: ";
     print p3.age;   // Should still be 25
     
-    // New tests for function parameters and return values
     print "\n=== Testing struct function parameters ===";
     displayPerson(p2);
     
