@@ -83,8 +83,16 @@ def main():
         
         # Sprawdź czy były błędy
         if error_listener.has_errors():
-            print("Kompilacja przerwana z powodu błędów.")
+            print("Detailed error information:")
+            for error in error_listener.errors:
+                print(f"  - {error}")
+            print("Compilation stopped due to errors.")
             return
+        elif error_listener.warnings:
+            print("Grammar contains ambiguities (warnings only):")
+            for warning in error_listener.warnings:
+                print(f"  - {warning}")
+            print("Continuing compilation despite warnings...")
         
         # 3. Budowa AST
         if DEBUG: print("Budowanie AST...")

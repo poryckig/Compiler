@@ -80,6 +80,7 @@ type
     | 'string'
     | 'bool'
     | 'void'        // Dodany typ void dla funkcji
+    | ID
     ;
 
 assignment

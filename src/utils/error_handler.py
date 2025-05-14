@@ -4,6 +4,7 @@ class CompilerErrorListener(ErrorListener):
     def __init__(self):
         super().__init__()
         self.errors = []
+        self.warnings = []  # Add this line for warnings
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
         # Rozróżnienie rodzaju błędu
@@ -26,9 +27,10 @@ class CompilerErrorListener(ErrorListener):
         print(error_msg)
 
     def reportAmbiguity(self, recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs):
-        error_msg = f"Niejednoznaczność w gramatyce od indeksu {startIndex} do {stopIndex}"
-        self.errors.append(error_msg)
-        print(error_msg)
+        # Change this to be a warning instead of an error
+        warning_msg = f"Niejednoznaczność w gramatyce od indeksu {startIndex} do {stopIndex}"
+        self.warnings.append(warning_msg)  # Add to warnings, not errors
+        print(warning_msg)
 
     def reportAttemptingFullContext(self, recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs):
         # Możemy zignorować te komunikaty lub zapisać je do logów
@@ -40,3 +42,6 @@ class CompilerErrorListener(ErrorListener):
         
     def has_errors(self):
         return len(self.errors) > 0
+    
+    def has_warnings(self):
+        return len(self.warnings) > 0

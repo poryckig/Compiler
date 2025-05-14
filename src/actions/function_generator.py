@@ -1,108 +1,119 @@
 import llvmlite.ir as ir
 
 def visit_FunctionDeclaration(self, node):
-    """Generuje kod LLVM dla deklaracji funkcji."""
-    # Określ typ zwracany przez funkcję
-    return_type = self.get_llvm_type(node.return_type)
-    print(f"DEBUG: Funkcja {node.name} zwraca typ {return_type}")
+    """Generates LLVM code for function declaration."""
+    # Get the function from the global symbol table
+    function = self.global_symbol_table[node.name]
+    print(f"DEBUG: Function {node.name} returns type {function.function_type.return_type}")
     
-    # Pobierz już utworzoną funkcję
-    function = self.get_variable(node.name)
-    
-    # Zapamietaj aktualną funkcję i builder
+    # Save current function and builder state
     old_function = getattr(self, "current_function", None)
     old_builder = self.builder
     old_local_symbol_table = self.local_symbol_table.copy() if hasattr(self, "local_symbol_table") else {}
     
-    # Ustaw bieżącą funkcję
+    # Set current function
     self.current_function = function
     
-    # Wyczyść lokalną tablicę symboli
+    # Clear local symbol table
     self.local_symbol_table = {}
     
-    # Utwórz blok wejściowy dla funkcji
+    # Create entry block for the function
     entry_block = function.append_basic_block(name="entry")
     self.builder = ir.IRBuilder(entry_block)
     
-    # Utwórz zmienne na stosie dla parametrów i załaduj wartości
-    param_types = [param.type for param in function.args]
-    
-    # Przed rozpoczęciem implementacji funkcji, zapisz aktualny zakres
+    # Save current scope
     old_scopes = self.symbol_table_stack.copy()
     old_current_scope = self.current_scope
     
-    # Ustaw nowy, pusty zasięg dla funkcji
+    # Set new empty scope for the function
     self.symbol_table_stack = []
     self.current_scope = {}
+    print(f"DEBUG: Wejście do nowego zakresu. Głębokość stosu: {len(self.symbol_table_stack)}")
     
-    # Utwórz zmienne na stosie dla parametrów i dodaj je do zakresu funkcji
+    # Create stack variables for parameters
     for i, param in enumerate(node.parameters):
         param_type = function.args[i].type
-        param_var = self.builder.alloca(param_type, name=param.name)
-        self.builder.store(function.args[i], param_var)
+        
+        # Handle struct parameters specially
+        if isinstance(param_type, ir.LiteralStructType):
+            print(f"DEBUG: Creating local copy of struct parameter {param.name}")
+            # Create local copy of the struct
+            param_var = self.builder.alloca(param_type, name=param.name)
+            
+            # Copy each field from the parameter to local copy
+            # Since param args are passed by value, we just store the param itself
+            self.builder.store(function.args[i], param_var)
+        else:
+            # For non-struct parameters, just allocate and store as before
+            param_var = self.builder.alloca(param_type, name=param.name)
+            self.builder.store(function.args[i], param_var)
+        
+        # Add parameter to local symbol table
         self.add_local_variable(param.name, param_var)
     
-    # Domyślna wartość zwracana (dla void lub jeśli brak return)
-    return_type = function.function_type.return_type
-    if isinstance(return_type, ir.VoidType):
-        default_return = None
-    else:
-        if isinstance(return_type, ir.IntType):
-            default_return = ir.Constant(return_type, 0)
-        elif isinstance(return_type, ir.FloatType) or isinstance(return_type, ir.DoubleType):
-            default_return = ir.Constant(return_type, 0.0)
-        else:
-            default_return = None
-    
-    # Przetwarzanie ciała funkcji
+    # Visit function body
     self.visit(node.body)
     
-    # Przywróć poprzedni stan zakresów
-    self.symbol_table_stack = old_scopes
-    self.current_scope = old_current_scope
-    
-    # Dodaj domyślny return, jeśli blok nie jest zakończony
+    # Add default return if block is not terminated
     if not self.builder.block.is_terminated:
-        if default_return is not None:
-            self.builder.ret(default_return)
-        else:
+        if isinstance(function.function_type.return_type, ir.VoidType):
             self.builder.ret_void()
+        else:
+            # Create a default return value based on the return type
+            if isinstance(function.function_type.return_type, ir.IntType):
+                default_return = ir.Constant(function.function_type.return_type, 0)
+            elif isinstance(function.function_type.return_type, ir.FloatType) or isinstance(function.function_type.return_type, ir.DoubleType):
+                default_return = ir.Constant(function.function_type.return_type, 0.0)
+            elif isinstance(function.function_type.return_type, ir.LiteralStructType):
+                # For struct return type, allocate a zero-initialized struct
+                zero_struct = self.builder.alloca(function.function_type.return_type)
+                default_return = self.builder.load(zero_struct)
+            else:
+                # For other types (like pointers), return null
+                null_ptr = ir.Constant(function.function_type.return_type, None)
+                default_return = null_ptr
+                
+            self.builder.ret(default_return)
     
-    # Przywróć poprzedni kontekst
+    # Restore previous context
     self.builder = old_builder
     self.current_function = old_function
     self.local_symbol_table = old_local_symbol_table
-    
-    print(f"DEBUG: Funkcja {node.name} została w pełni zaimplementowana")
+    self.symbol_table_stack = old_scopes
+    self.current_scope = old_current_scope
     
     return function
 
 def visit_FunctionCall(self, node):
-    """Generuje kod LLVM dla wywołania funkcji."""
-    # Pobierz funkcję z globalnej tablicy symboli (funkcje są globalne)
+    """Generates LLVM code for function calls."""
+    # Get the function from symbol table
     if node.name in self.global_symbol_table:
         function = self.global_symbol_table[node.name]
     else:
         try:
-            # Spróbuj znaleźć funkcję przez get_variable
             function = self.get_variable(node.name)
         except ValueError:
-            raise ValueError(f"Niezdefiniowana funkcja: {node.name}")
+            raise ValueError(f"Undefined function: {node.name}")
     
-    # Sprawdź liczbę argumentów
+    # Check argument count
     if len(node.arguments) != len(function.args):
-        raise ValueError(f"Nieprawidłowa liczba argumentów dla funkcji {node.name}. Oczekiwano {len(function.args)}, otrzymano {len(node.arguments)}")
+        raise ValueError(f"Wrong number of arguments for {node.name}: expected {len(function.args)}, got {len(node.arguments)}")
     
-    # Przetwórz argumenty
+    # Process arguments
     args = []
     for i, arg_expr in enumerate(node.arguments):
         arg = self.visit(arg_expr)
         
-        # Jeśli argument jest wskaźnikiem, załaduj wartość
-        if isinstance(arg.type, ir.PointerType) and not (isinstance(arg.type.pointee, ir.IntType) and arg.type.pointee.width == 8):
+        # If argument is a struct, handle it specially
+        if isinstance(function.args[i].type, ir.LiteralStructType) and isinstance(arg.type, ir.PointerType):
+            # Load the entire struct
             arg = self.builder.load(arg)
         
-        # Konwersja typu, jeśli potrzebna
+        # For other pointers, load the value
+        elif isinstance(arg.type, ir.PointerType) and not (isinstance(arg.type.pointee, ir.IntType) and arg.type.pointee.width == 8):
+            arg = self.builder.load(arg)
+        
+        # Type conversion
         expected_type = function.args[i].type
         if arg.type != expected_type:
             if isinstance(expected_type, ir.IntType) and isinstance(arg.type, ir.FloatType):
@@ -120,51 +131,45 @@ def visit_FunctionCall(self, node):
         
         args.append(arg)
     
-    # Wywołaj funkcję
+    # Call the function
     call = self.builder.call(function, args)
     
-    # Jeśli funkcja zwraca void, a używana jest w wyrażeniu, zwróć jakąś fikcyjną wartość
+    # Handle void return type for expressions
     if isinstance(function.function_type.return_type, ir.VoidType):
-        print(f"DEBUG: Funkcja {node.name} zwraca void")
-        # Stwórz specjalną strukturę, która wskazuje, że to jest wynik funkcji void
         call.type = ir.VoidType()
     
     return call
 
 def visit_ReturnStatement(self, node):
     """Generuje kod LLVM dla instrukcji return."""
-    # Sprawdź, czy jesteśmy w funkcji
+    # Check if we're in a function
     if not hasattr(self, "current_function") or not self.current_function:
         raise ValueError("Instrukcja return poza funkcją")
     
-    # Pobierz typ zwracany funkcji
+    # Get the return type of the function
     return_type = self.current_function.function_type.return_type
     
-    # Obsługa return bez wyrażenia
+    # Handle return without expression
     if node.expression is None:
         if isinstance(return_type, ir.VoidType):
             self.builder.ret_void()
         else:
-            # Zwróć wartość domyślną dla danego typu
-            if isinstance(return_type, ir.IntType):
-                self.builder.ret(ir.Constant(return_type, 0))
-            elif isinstance(return_type, ir.FloatType) or isinstance(return_type, ir.DoubleType):
-                self.builder.ret(ir.Constant(return_type, 0.0))
-            elif isinstance(return_type, ir.PointerType):
-                # Dla wskaźników (np. stringów) zwróć wskaźnik zerowy
-                null_ptr = ir.Constant(return_type, None)
-                self.builder.ret(null_ptr)
-            else:
-                raise ValueError(f"Brak wyrażenia w return dla funkcji zwracającej {return_type}")
+            raise ValueError(f"Brak wyrażenia w return dla funkcji zwracającej {return_type}")
     else:
-        # Przetwórz wyrażenie zwracane
+        # Process return expression
         value = self.visit(node.expression)
         
-        # Jeśli wartość jest wskaźnikiem, załaduj ją - ALE NIE DLA STRINGÓW
-        if isinstance(value.type, ir.PointerType) and not (isinstance(value.type.pointee, ir.IntType) and value.type.pointee.width == 8):
-            value = self.builder.load(value)
+        # Load value if it's a pointer (including structs)
+        if isinstance(value.type, ir.PointerType):
+            # For structs, load the entire struct
+            if isinstance(value.type.pointee, ir.LiteralStructType):
+                print(f"DEBUG: Loading struct for return")
+                value = self.builder.load(value)
+            # For other pointers (except strings)
+            elif not (isinstance(value.type.pointee, ir.IntType) and value.type.pointee.width == 8):
+                value = self.builder.load(value)
         
-        # Konwersja typu, jeśli potrzebna
+        # Perform type conversion if needed
         if value.type != return_type:
             if isinstance(return_type, ir.IntType) and isinstance(value.type, ir.FloatType):
                 value = self.builder.fptosi(value, return_type)
@@ -179,7 +184,7 @@ def visit_ReturnStatement(self, node):
             elif isinstance(return_type, ir.DoubleType) and isinstance(value.type, ir.FloatType):
                 value = self.builder.fpext(value, return_type)
         
-        # Zwróć wartość
+        # Return the value
         self.builder.ret(value)
     
     return None

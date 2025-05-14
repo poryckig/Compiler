@@ -199,9 +199,9 @@ class StructAccess(ASTNode):
         self.member_name = member_name
 
 class StructAssignment(ASTNode):
-    def __init__(self, struct_name, member_name, value):
+    def __init__(self, struct_name, field_name, value):
         self.struct_name = struct_name
-        self.member_name = member_name
+        self.field_name = field_name
         self.value = value
         
 class StructToStructAssignment(ASTNode):

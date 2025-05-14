@@ -161,11 +161,11 @@ class LLVMGenerator:
     # Implementacje metod wizytatora dla różnych typów węzłów
     
     def visit_Program(self, node):
-        # KROK 0: Process struct definitions
+        # KROK 0: Process struct definitions first
         for struct_def in node.struct_definitions:
             self.visit(struct_def)
         
-        # KROK 1: Najpierw zarejestruj wszystkie funkcje (tylko deklaracje, bez implementacji)
+        # KROK 1: Register all functions (declarations only, no implementation)
         for func in node.functions:
             # Określ typ zwracany przez funkcję
             return_type = self.get_llvm_type(func.return_type)
@@ -202,7 +202,7 @@ class LLVMGenerator:
                 self.visit(stmt)
                 
     def get_llvm_type(self, type_name):
-        """Zwraca typ LLVM odpowiadający nazwie typu z języka."""
+        """Returns the LLVM type corresponding to the language type name."""
         print(f"DEBUG get_llvm_type: Mapowanie typu {type_name}")
         if type_name == 'int':
             return self.int_type
@@ -216,7 +216,13 @@ class LLVMGenerator:
             return ir.PointerType(ir.IntType(8))
         elif type_name == 'void':
             return ir.VoidType()
+        elif type_name in self.struct_types:
+            # Return struct type if it's a registered struct
+            struct_type, _, _ = self.struct_types[type_name]
+            return struct_type
         else:
+            # Add debug output to help diagnose issues
+            print(f"DEBUG: Available struct types: {list(self.struct_types.keys())}")
             raise ValueError(f"Nieznany typ: {type_name}")
         
     def get_variable(self, name):

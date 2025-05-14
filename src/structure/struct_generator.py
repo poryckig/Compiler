@@ -123,36 +123,42 @@ def visit_StructAccess(self, node):
 
 def visit_StructAssignment(self, node):
     """Generates LLVM code for struct member assignment."""
-    print(f"DEBUG: Assigning to struct {node.struct_name}.{node.member_name}")
+    print(f"DEBUG: Assigning to struct {node.struct_name}.{node.field_name}")
     
     # Get a pointer to the member
-    member_ptr = self.visit_StructAccess(StructAccess(node.struct_name, node.member_name))
+    member_ptr = self.visit_StructAccess(StructAccess(node.struct_name, node.field_name))
     
-    # Calculate the value to assign
+    # Get the value to assign
     value = self.visit(node.value)
     
-    # Get the member type
-    member_type = member_ptr.type.pointee
+    # Get the field type
+    field_type = member_ptr.type.pointee
+    
+    # If value is a pointer, load the value first
+    if isinstance(value.type, ir.PointerType) and not (
+            isinstance(value.type.pointee, ir.IntType) and value.type.pointee.width == 8):
+        print(f"DEBUG: Loading value from pointer {value.type} before assignment")
+        value = self.builder.load(value)
     
     # Perform type conversion if needed
-    if isinstance(member_type, ir.IntType) and isinstance(value.type, ir.FloatType):
-        value = self.builder.fptosi(value, member_type)
-        print(f"DEBUG: Converting float -> int for member {node.member_name}")
-    elif isinstance(member_type, ir.IntType) and isinstance(value.type, ir.DoubleType):
-        value = self.builder.fptosi(value, member_type)
-        print(f"DEBUG: Converting double -> int for member {node.member_name}")
-    elif isinstance(member_type, ir.FloatType) and isinstance(value.type, ir.IntType):
-        value = self.builder.sitofp(value, member_type)
-        print(f"DEBUG: Converting int -> float for member {node.member_name}")
-    elif isinstance(member_type, ir.FloatType) and isinstance(value.type, ir.DoubleType):
-        value = self.builder.fptrunc(value, member_type)
-        print(f"DEBUG: Converting double -> float for member {node.member_name}")
-    elif isinstance(member_type, ir.DoubleType) and isinstance(value.type, ir.IntType):
-        value = self.builder.sitofp(value, member_type)
-        print(f"DEBUG: Converting int -> double for member {node.member_name}")
-    elif isinstance(member_type, ir.DoubleType) and isinstance(value.type, ir.FloatType):
-        value = self.builder.fpext(value, member_type)
-        print(f"DEBUG: Converting float -> double for member {node.member_name}")
+    if isinstance(field_type, ir.IntType) and isinstance(value.type, ir.FloatType):
+        value = self.builder.fptosi(value, field_type)
+        print(f"DEBUG: Converting float -> int for member {node.field_name}")
+    elif isinstance(field_type, ir.IntType) and isinstance(value.type, ir.DoubleType):
+        value = self.builder.fptosi(value, field_type)
+        print(f"DEBUG: Converting double -> int for member {node.field_name}")
+    elif isinstance(field_type, ir.FloatType) and isinstance(value.type, ir.IntType):
+        value = self.builder.sitofp(value, field_type)
+        print(f"DEBUG: Converting int -> float for member {node.field_name}")
+    elif isinstance(field_type, ir.FloatType) and isinstance(value.type, ir.DoubleType):
+        value = self.builder.fptrunc(value, field_type)
+        print(f"DEBUG: Converting double -> float for member {node.field_name}")
+    elif isinstance(field_type, ir.DoubleType) and isinstance(value.type, ir.IntType):
+        value = self.builder.sitofp(value, field_type)
+        print(f"DEBUG: Converting int -> double for member {node.field_name}")
+    elif isinstance(field_type, ir.DoubleType) and isinstance(value.type, ir.FloatType):
+        value = self.builder.fpext(value, field_type)
+        print(f"DEBUG: Converting float -> double for member {node.field_name}")
     
     # Store the value in the member
     self.builder.store(value, member_ptr)
