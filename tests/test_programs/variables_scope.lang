@@ -1,13 +1,9 @@
-// ================================================================
-// variables_scope.lang - Test zakresu zmiennych (lokalnych i globalnych)
-// ================================================================
-
 // Zmienne globalne
 int globalInt = 42;
 float globalFloat = 3.14;
 string globalString = "Jestem zmienna globalna";
 
-// Funkcja używająca zmiennych globalnych
+// Funkcja uzywajaca zmiennych globalnych
 void displayGlobals() {
     print "=== Wyswietlenie zmiennych globalnych ===";
     print "globalInt = ";
@@ -18,7 +14,7 @@ void displayGlobals() {
     print globalString;
 }
 
-// Funkcja zmieniająca zmienne globalne
+// Funkcja zmieniajaca zmienne globalne
 void modifyGlobals() {
     print "=== Modyfikacja zmiennych globalnych ===";
     globalInt = 100;
@@ -28,21 +24,21 @@ void modifyGlobals() {
     displayGlobals();
 }
 
-// Funkcja z lokalnymi zmiennymi przesłaniającymi globalne
+// Funkcja z lokalnymi zmiennymi przesłaniajacymi globalne
 void shadowingTest() {
     print "=== Test przeslaniania zmiennych ===";
-    int globalInt = 999;    // Przesłania zmienną globalną
-    float globalFloat = 1.1; // Przesłania zmienną globalną
+    int globalInt = 999;    // Przesłania zmienna globalna
+    float globalFloat = 1.1; // Przesłania zmienna globalna
     
     print "Lokalna zmienna 'globalInt' = ";
     print globalInt;
     print "Lokalna zmienna 'globalFloat' = ";
     print globalFloat;
     print "Globalna zmienna 'globalString' = ";
-    print globalString;  // Użycie zmiennej globalnej, która nie jest przesłonięta
+    print globalString;  // Uzycie zmiennej globalnej, ktora nie jest przeslonieta
 }
 
-// Funkcja testująca zasięg parametrów funkcji
+// Funkcja testująca zasięg parametrow funkcji
 int parameterScope(int value) {
     print "=== Test zasiegu parametrow ===";
     print "Parametr 'value' = ";
@@ -50,20 +46,20 @@ int parameterScope(int value) {
     
     // Zmienna lokalna o tej samej nazwie co parametr
     {
-        // Zagnieżdżony blok z przesłonięciem parametru
+        // Zagniezdzony blok z przeslonieciem parametru
         int value = 777;
         print "Lokalna zmienna 'value' w bloku = ";
         print value;
     }
     
-    // Powrót do parametru
+    // Powrot do parametru
     print "Parametr 'value' po bloku = ";
     print value;
     
     return value * 2;
 }
 
-// Funkcja testująca zmienne lokalne w różnych blokach
+// Funkcja testujaca zmienne lokalne w roznych blokach
 void localScopeTest() {
     print "=== Test zasiegu zmiennych lokalnych ===";
     
@@ -71,7 +67,7 @@ void localScopeTest() {
     print "Zmienna 'outer' = ";
     print outer;
     
-    // Blok zagnieżdżony
+    // Blok zagniezdzony
     {
         int inner = 20;
         print "Zmienna 'inner' = ";
@@ -85,16 +81,16 @@ void localScopeTest() {
         print outer;
     }
     
-    // Zmienna 'inner' nie jest tutaj dostępna
+    // Zmienna 'inner' nie jest tutaj dostepna
     print "Zmienna 'outer' po bloku = ";
     print outer;
 }
 
-// Funkcja testująca zmienne w pętlach i warunkach
+// Funkcja testujaca zmienne w pętlach i warunkach
 void controlFlowScopeTest() {
     print "=== Test zasiegu zmiennych w strukturach kontrolnych ===";
     
-    // Zmienna przed pętlą
+    // Zmienna przed pętla
     int counter = 0;
     
     // Zmienna w pętli
@@ -117,12 +113,12 @@ void controlFlowScopeTest() {
     print counter;
 }
 
-// Funkcja testująca rekurencję i zmienne lokalne
+// Funkcja testująca rekurencje i zmienne lokalne
 int recursiveTest(int n) {
     print "=== Wywolanie rekurencyjne z n = ";
     print n;
     
-    // Zmienna lokalna, inna dla każdego wywołania rekurencyjnego
+    // Zmienna lokalna, inna dla kazdego wywolania rekurencyjnego
     int localVar = n * 10;
     print "Lokalna zmienna = ";
     print localVar;
@@ -141,34 +137,23 @@ int recursiveTest(int n) {
     return result;
 }
 
-// Funkcja zwracająca adres zmiennej lokalnej (potencjalny błąd)
-int localAddressTest() {
-    print "=== Test adresu zmiennej lokalnej ===";
-    
-    int local = 50;
-    print "Zmienna lokalna = ";
-    print local;
-    
-    return local;  // Prawidłowe zachowanie: zwraca wartość, nie adres
-}
+// Program głowny
+print "=========== START TESTU ZASIEGU ZMIENNYCH ===========";
 
-// Program główny
-print "=========== START TESTU ZASIĘGU ZMIENNYCH ===========";
-
-// Wyświetlenie wartości początkowych zmiennych globalnych
+// Wyswietlenie wartosci poczatkowych zmiennych globalnych
 displayGlobals();
 
-// Test zmiennych lokalnych przesłaniających globalne
+// Test zmiennych lokalnych przeslaniających globalne
 shadowingTest();
 
-// Sprawdzenie, że zmienne globalne nie zostały zmienione przez przesłonięcie
-print "=== Zmienne globalne po teście przesłaniania ===";
+// Sprawdzenie, że zmienne globalne nie zostaly zmienione przez przesloniecie
+print "=== Zmienne globalne po tescie przeslaniania ===";
 displayGlobals();
 
 // Modyfikacja zmiennych globalnych
 modifyGlobals();
 
-// Test zakresu parametrów
+// Test zakresu parametrow
 int paramResult = parameterScope(5);
 print "Wynik funkcji parameterScope: ";
 print paramResult;
@@ -176,18 +161,13 @@ print paramResult;
 // Test zakresu zmiennych lokalnych
 localScopeTest();
 
-// Test zakresu w pętlach i warunkach
+// Test zakresu w petlach i warunkach
 controlFlowScopeTest();
 
 // Test rekurencji
 print "=== Test rekurencji ===";
 int recResult = recursiveTest(4);
-print "Końcowy wynik rekurencji: ";
+print "Koncowy wynik rekurencji: ";
 print recResult;
 
-// Test adresu zmiennej lokalnej
-int localValue = localAddressTest();
-print "Zwrócona wartość lokalna: ";
-print localValue;
-
-print "=========== KONIEC TESTU ZASIĘGU ZMIENNYCH ===========";
+print "=========== KONIEC TESTU ZASIEGU ZMIENNYCH ===========";

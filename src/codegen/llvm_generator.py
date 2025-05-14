@@ -41,6 +41,12 @@ class LLVMGenerator:
         # Słownik zmiennych globalnych (symbol table)
         self.global_symbol_table = {}
         
+        # Stos tablic symboli dla zasięgów lokalnych
+        self.symbol_table_stack = []
+        
+        # Aktualnie aktywna tablica symboli
+        self.current_scope = {}
+        
         # Słownik zmiennych lokalnych dla bieżącej funkcji
         self.local_symbol_table = {}
         
@@ -55,6 +61,49 @@ class LLVMGenerator:
         
         # Dodaj kompatybilność, mapując symbol_table na global_symbol_table
         self.symbol_table = self.global_symbol_table
+
+    # Nowe metody do zarządzania zasięgami
+    def enter_scope(self):
+        """Wejście do nowego zakresu (bloku)."""
+        # Zapisz aktualny zasięg na stosie
+        self.symbol_table_stack.append(self.current_scope)
+        # Utwórz nowy, pusty zasięg
+        self.current_scope = {}
+        print(f"DEBUG: Wejście do nowego zakresu. Głębokość stosu: {len(self.symbol_table_stack)}")
+
+    def exit_scope(self):
+        """Wyjście z bieżącego zakresu."""
+        if self.symbol_table_stack:
+            # Przywróć poprzedni zasięg
+            self.current_scope = self.symbol_table_stack.pop()
+            print(f"DEBUG: Wyjście z zakresu. Głębokość stosu: {len(self.symbol_table_stack)}")
+        else:
+            # Jeśli stos jest pusty, to jesteśmy w zakresie globalnym
+            self.current_scope = {}
+            print("DEBUG: Wyjście do zakresu globalnego")
+
+    def add_local_variable(self, name, value):
+        """Dodaje zmienną do bieżącego zakresu."""
+        self.current_scope[name] = value
+        print(f"DEBUG: Dodano zmienną '{name}' do bieżącego zakresu")
+
+    def find_variable(self, name):
+        """Znajduje zmienną przeszukując zasięgi od najbardziej lokalnego do globalnego."""
+        # Najpierw przeszukaj bieżący zasięg
+        if name in self.current_scope:
+            return self.current_scope[name]
+        
+        # Następnie przeszukaj stos zasięgów od góry do dołu
+        for scope in reversed(self.symbol_table_stack):
+            if name in scope:
+                return scope[name]
+        
+        # Wreszcie sprawdź zasięg globalny
+        if name in self.global_symbol_table:
+            return self.global_symbol_table[name]
+        
+        # Jeśli nie znaleziono zmiennej, zgłoś błąd
+        raise ValueError(f"Niezadeklarowana zmienna: {name}")
 
     def _make_counter(self):
         """Pomocnicza funkcja do generowania unikalnych identyfikatorów."""

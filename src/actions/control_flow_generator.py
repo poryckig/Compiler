@@ -265,7 +265,14 @@ def visit_ForStatement(self, node):
 
 def visit_Block(self, node):
     """Generuje kod LLVM dla bloku instrukcji."""
+    # Wejście do nowego zakresu
+    self.enter_scope()
+    
     # Odwiedź wszystkie instrukcje w bloku
     for stmt in node.statements:
         self.visit(stmt)
+    
+    # Wyjście z zakresu
+    self.exit_scope()
+    
     return None

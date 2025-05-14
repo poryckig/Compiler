@@ -9,7 +9,7 @@ def visit_VariableDeclaration(self, node):
     print(f"Deklaracja zmiennej {node.name} typu {var_type}")
     
     # Określ, czy zmienna jest globalna
-    is_global = not hasattr(self, "current_function")
+    is_global = not self.symbol_table_stack  # Pusty stos oznacza zasięg globalny
     
     if is_global:
         # Globalne zmienne deklarowane na poziomie modułu
@@ -100,6 +100,9 @@ def visit_VariableDeclaration(self, node):
         # Inicjalizacja zmiennej wartością domyślną
         self.builder.store(default_value, var_ptr)
         print(f"Inicjalizacja zmiennej {node.name} wartością domyślną")
+        
+        # Dodaj zmienną do bieżącego zakresu
+        self.add_local_variable(node.name, var_ptr)
         
         # Zapisz wskaźnik do lokalnej tablicy symboli
         self.local_symbol_table[node.name] = var_ptr

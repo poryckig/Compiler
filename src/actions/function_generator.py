@@ -26,15 +26,21 @@ def visit_FunctionDeclaration(self, node):
     
     # Utwórz zmienne na stosie dla parametrów i załaduj wartości
     param_types = [param.type for param in function.args]
+    
+    # Przed rozpoczęciem implementacji funkcji, zapisz aktualny zakres
+    old_scopes = self.symbol_table_stack.copy()
+    old_current_scope = self.current_scope
+    
+    # Ustaw nowy, pusty zasięg dla funkcji
+    self.symbol_table_stack = []
+    self.current_scope = {}
+    
+    # Utwórz zmienne na stosie dla parametrów i dodaj je do zakresu funkcji
     for i, param in enumerate(node.parameters):
-        # Utwórz zmienną na stosie
-        param_var = self.builder.alloca(param_types[i], name=param.name)
-        
-        # Załaduj wartość parametru do zmiennej
+        param_type = function.args[i].type
+        param_var = self.builder.alloca(param_type, name=param.name)
         self.builder.store(function.args[i], param_var)
-        
-        # Zapisz w lokalnej tablicy symboli
-        self.local_symbol_table[param.name] = param_var
+        self.add_local_variable(param.name, param_var)
     
     # Domyślna wartość zwracana (dla void lub jeśli brak return)
     return_type = function.function_type.return_type
@@ -50,6 +56,10 @@ def visit_FunctionDeclaration(self, node):
     
     # Przetwarzanie ciała funkcji
     self.visit(node.body)
+    
+    # Przywróć poprzedni stan zakresów
+    self.symbol_table_stack = old_scopes
+    self.current_scope = old_current_scope
     
     # Dodaj domyślny return, jeśli blok nie jest zakończony
     if not self.builder.block.is_terminated:
