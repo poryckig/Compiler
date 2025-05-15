@@ -11,6 +11,7 @@ class ASTBuilder(langVisitor):
         functions = []
         statements = []
         struct_definitions = []
+        class_definitions = []
         
         for child in ctx.children:
             if isinstance(child, langParser.FunctionDeclarationContext):
@@ -21,12 +22,16 @@ class ASTBuilder(langVisitor):
                 struct_def = self.visit(child)
                 if struct_def:
                     struct_definitions.append(struct_def)
+            elif isinstance(child, langParser.ClassDefinitionContext):
+                class_def = self.visit(child)
+                if class_def:
+                    class_definitions.append(class_def)
             elif isinstance(child, langParser.StatementContext):
                 stmt = self.visit(child)
                 if stmt:
                     statements.append(stmt)
         
-        return Program(statements, functions, struct_definitions)
+        return Program(statements, functions, struct_definitions, class_definitions)
 
     def visitStatement(self, ctx:langParser.StatementContext):
         print(f"Statement children: {[ctx.getChild(i).getText() for i in range(ctx.getChildCount())]}")
@@ -58,7 +63,14 @@ class ASTBuilder(langVisitor):
         
         initial_value = None
         if ctx.expression():
-            initial_value = self.visit(ctx.expression())
+            expr = self.visit(ctx.expression())
+            
+            # Check if it's a FunctionCall with an uppercase name (likely a constructor)
+            if isinstance(expr, FunctionCall) and expr.name[0].isupper():
+                # Convert it to ClassInstantiation
+                return ClassDeclaration(var_type, name, expr.arguments)
+            
+            initial_value = expr
         
         return VariableDeclaration(var_type, name, initial_value)
     
@@ -497,6 +509,7 @@ class ASTBuilder(langVisitor):
         
         return FunctionDeclaration(return_type, name, parameters, body)
 
+    # Correctly handle function calls to create Point objects
     def visitFunctionCall(self, ctx:langParser.FunctionCallContext):
         name = ctx.ID().getText()
         
@@ -505,6 +518,10 @@ class ASTBuilder(langVisitor):
             for expr_ctx in ctx.argumentList().expression():
                 argument = self.visit(expr_ctx)
                 arguments.append(argument)
+        
+        # Check if it's likely a class constructor (uppercase name)
+        if name[0].isupper():
+            return ClassInstantiation(name, arguments)
         
         return FunctionCall(name, arguments)
 
@@ -549,3 +566,67 @@ class ASTBuilder(langVisitor):
         member_name = ctx.ID(1).getText()
         value = self.visit(ctx.expression())
         return StructAssignment(struct_name, member_name, value)
+    
+    def visitClassDefinition(self, ctx):
+        name = ctx.ID().getText()
+        fields = []
+        methods = []
+        constructors = []
+        
+        for member_ctx in ctx.classMember():
+            if isinstance(member_ctx, langParser.ClassFieldContext):
+                field_type = member_ctx.type_().getText()
+                field_name = member_ctx.ID().getText()
+                fields.append(ClassField(field_type, field_name))
+            elif isinstance(member_ctx, langParser.ClassConstructorContext):
+                constructor_name = member_ctx.ID().getText()
+                
+                parameters = []
+                if member_ctx.parameterList():
+                    for param_ctx in member_ctx.parameterList().parameter():
+                        param_type = param_ctx.type_().getText()
+                        param_name = param_ctx.ID().getText()
+                        parameters.append(Parameter(param_type, param_name))
+                
+                body = self.visit(member_ctx.blockStatement())
+                constructors.append(ClassConstructor(constructor_name, parameters, body))
+            elif isinstance(member_ctx, langParser.ClassMethodContext):
+                return_type = member_ctx.type_().getText()
+                method_name = member_ctx.ID().getText()
+                
+                parameters = []
+                if member_ctx.parameterList():
+                    for param_ctx in member_ctx.parameterList().parameter():
+                        param_type = param_ctx.type_().getText()
+                        param_name = param_ctx.ID().getText()
+                        parameters.append(Parameter(param_type, param_name))
+                
+                body = self.visit(member_ctx.blockStatement())
+                methods.append(ClassMethod(return_type, method_name, parameters, body))
+        
+        return ClassDefinition(name, fields, methods, constructors)
+
+    def visitClassVarDecl(self, ctx):
+        class_type = ctx.ID(0).getText()
+        name = ctx.ID(1).getText()
+        
+        # Process constructor call
+        constructor_args = []
+        if ctx.ID(2):  # If there's a constructor call
+            if ctx.argumentList():
+                for expr_ctx in ctx.argumentList().expression():
+                    constructor_args.append(self.visit(expr_ctx))
+        
+        return ClassDeclaration(class_type, name, constructor_args)
+
+    def visitThisExpr(self, ctx):
+        return ThisExpression()
+
+    def visitThisMemberAccess(self, ctx):
+        member_name = ctx.ID().getText()
+        return ThisMemberAccess(member_name)
+
+    def visitThisMemberAssign(self, ctx):
+        member_name = ctx.ID().getText()
+        value = self.visit(ctx.expression())
+        return ThisMemberAssignment(member_name, value)

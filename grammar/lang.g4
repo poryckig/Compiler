@@ -1,7 +1,7 @@
 grammar lang;
 
 program
-    : (structDefinition | functionDeclaration | statement)+ EOF
+    : (structDefinition | classDefinition | functionDeclaration | statement)+ EOF
     ;
 
 structDefinition
@@ -10,6 +10,16 @@ structDefinition
 
 structMember
     : type ID ';'
+    ;
+
+classDefinition
+    : 'class' ID '{' classMember+ '}' ';'
+    ;
+
+classMember
+    : type ID ';'                                      # ClassField
+    | ID '(' parameterList? ')' blockStatement         # ClassConstructor
+    | type ID '(' parameterList? ')' blockStatement    # ClassMethod
     ;
 
 functionDeclaration
@@ -55,6 +65,7 @@ returnStatement
 variableDeclaration
     : type ID ('=' expression)?                          # SimpleVarDecl
     | ID ID ('=' structInitializer)?                     # StructVarDecl
+    | ID ID ('=' ID '(' argumentList? ')')?              # ClassVarDecl
     | type ID '[' INT ']' ('=' arrayInitializer)?        # ArrayDecl
     | type ID '[' INT ']' '[' INT ']' 
         ('=' matrixInitializer)?                         # MatrixDecl
@@ -86,6 +97,7 @@ type
 assignment
     : ID '=' expression                                  # SimpleAssign
     | ID '.' ID '=' expression                           # StructMemberAssign
+    | 'this' '.' ID '=' expression                       # ThisMemberAssign
     | ID '[' expression ']' '=' expression               # ArrayAssign
     | ID '[' expression ']' '[' expression ']' 
         '=' expression                                   # MatrixAssign
@@ -143,6 +155,7 @@ primaryExpression
     : '(' expression ')'                                 # ParenExpr
     | functionCall                                       # FuncCallExpr
     | ID '.' ID                                          # StructMemberAccess
+    | 'this' '.' ID                                      # ThisMemberAccess
     | ID                                                 # VarExpr
     | ID '[' expression ']'                              # ArrayAccessExpr
     | ID '[' expression ']' '[' expression ']'           # MatrixAccessExpr

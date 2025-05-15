@@ -20,6 +20,12 @@ from src.actions.function_generator import visit_FunctionDeclaration, visit_Func
 
 from src.structure.struct_generator import visit_StructDefinition, visit_StructDeclaration, visit_StructAccess, visit_StructAssignment, visit_StructToStructAssignment
 
+from src.classs.class_generator import (
+    visit_ClassDefinition, _register_class_method, _register_class_constructor,
+    visit_ClassDeclaration, visit_ThisExpression, visit_ThisMemberAccess,
+    visit_ThisMemberAssignment, visit_ClassInstantiation
+)
+
 class LLVMGenerator:
     def __init__(self):
         # Inicjalizacja LLVM
@@ -54,6 +60,13 @@ class LLVMGenerator:
         
         # Add struct type registry
         self.struct_types = {}  # Maps struct_name -> (struct_type, [member_names], [member_types])
+        
+        self.class_types = {}  # Maps class_name -> (class_type, [field_names], [field_types])
+        self.class_methods = {}  # Maps class_name -> {method_name -> function}
+        self.class_constructors = {}  # Maps class_name -> {constructor_name -> function}
+        self.current_class = None  # Current class being processed
+        self.current_method = None  # Current method being processed
+        self.this_ptr = None  # Current 'this' pointer
         
         # Licznik dla unikalnych identyfikatorów
         self._global_counter = self._make_counter()
@@ -161,9 +174,12 @@ class LLVMGenerator:
     # Implementacje metod wizytatora dla różnych typów węzłów
     
     def visit_Program(self, node):
-        # KROK 0: Process struct definitions first
+        # KROK 0: Process struct and class definitions first
         for struct_def in node.struct_definitions:
             self.visit(struct_def)
+        
+        for class_def in node.class_definitions:
+            self.visit(class_def)
         
         # KROK 1: Register all functions (declarations only, no implementation)
         for func in node.functions:
@@ -220,9 +236,14 @@ class LLVMGenerator:
             # Return struct type if it's a registered struct
             struct_type, _, _ = self.struct_types[type_name]
             return struct_type
+        elif type_name in self.class_types:
+            # Return class type if it's a registered class
+            class_type, _, _ = self.class_types[type_name]
+            return class_type
         else:
             # Add debug output to help diagnose issues
             print(f"DEBUG: Available struct types: {list(self.struct_types.keys())}")
+            print(f"DEBUG: Available class types: {list(self.class_types.keys())}")
             raise ValueError(f"Nieznany typ: {type_name}")
         
     def get_variable(self, name):
@@ -299,3 +320,12 @@ LLVMGenerator.visit_StructDeclaration = visit_StructDeclaration
 LLVMGenerator.visit_StructAccess = visit_StructAccess
 LLVMGenerator.visit_StructAssignment = visit_StructAssignment
 LLVMGenerator.visit_StructToStructAssignment = visit_StructToStructAssignment
+
+LLVMGenerator.visit_ClassDefinition = visit_ClassDefinition
+LLVMGenerator._register_class_method = _register_class_method
+LLVMGenerator._register_class_constructor = _register_class_constructor
+LLVMGenerator.visit_ClassDeclaration = visit_ClassDeclaration
+LLVMGenerator.visit_ThisExpression = visit_ThisExpression
+LLVMGenerator.visit_ThisMemberAccess = visit_ThisMemberAccess
+LLVMGenerator.visit_ThisMemberAssignment = visit_ThisMemberAssignment
+LLVMGenerator.visit_ClassInstantiation = visit_ClassInstantiation

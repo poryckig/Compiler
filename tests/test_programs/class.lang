@@ -1,0 +1,20 @@
+class Point {
+    int x;
+    int y;
+    
+    Point(int x_val, int y_val) {
+        this.x = x_val;
+        this.y = y_val;
+    }
+};
+
+void testClasses() {
+    // Simple constructor call
+    Point p1 = Point(10, 20);
+    
+    print p1.x;
+    print p1.y;
+}
+
+print "Testing classes";
+testClasses();

@@ -2,10 +2,11 @@ class ASTNode:
     pass
 
 class Program:
-    def __init__(self, statements, functions=None, struct_definitions=None):
+    def __init__(self, statements, functions=None, struct_definitions=None, class_definitions=None):
         self.statements = statements
         self.functions = functions or []
         self.struct_definitions = struct_definitions or []
+        self.class_definitions = class_definitions or []
 
 #           * * * * DECLARATION * * * * 
 class VariableDeclaration(ASTNode):
@@ -208,3 +209,59 @@ class StructToStructAssignment(ASTNode):
     def __init__(self, dest_name, src_name):
         self.dest_name = dest_name
         self.src_name = src_name
+
+#           * * * * CLASS * * * * 
+class ClassDefinition(ASTNode):
+    def __init__(self, name, fields, methods, constructors):
+        self.name = name
+        self.fields = fields      # List of class fields (similar to struct members)
+        self.methods = methods    # List of class methods
+        self.constructors = constructors  # List of constructors
+
+class ClassField(ASTNode):
+    def __init__(self, field_type, name):
+        self.field_type = field_type
+        self.name = name
+
+class ClassMethod(ASTNode):
+    def __init__(self, return_type, name, parameters, body):
+        self.return_type = return_type
+        self.name = name
+        self.parameters = parameters
+        self.body = body
+
+class ClassConstructor(ASTNode):
+    def __init__(self, name, parameters, body):
+        self.name = name
+        self.parameters = parameters
+        self.body = body
+
+class ClassDeclaration(ASTNode):
+    def __init__(self, class_type, name, constructor_args=None):
+        self.class_type = class_type
+        self.name = name
+        self.constructor_args = constructor_args
+
+class ThisExpression(ASTNode):
+    def __init__(self):
+        pass
+
+class ThisMemberAccess(ASTNode):
+    def __init__(self, member_name):
+        self.member_name = member_name
+
+class ThisMemberAssignment(ASTNode):
+    def __init__(self, member_name, value):
+        self.member_name = member_name
+        self.value = value
+
+class ClassInstantiation(ASTNode):
+    def __init__(self, class_name, arguments):
+        self.class_name = class_name
+        self.arguments = arguments
+
+class ClassMethodCall(ASTNode):
+    def __init__(self, obj_name, method_name, arguments):
+        self.obj_name = obj_name
+        self.method_name = method_name
+        self.arguments = arguments

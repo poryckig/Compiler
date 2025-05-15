@@ -87,30 +87,42 @@ def visit_StructAccess(self, node):
     
     # Get the struct variable from the symbol table
     struct_ptr = self.find_variable(node.struct_name)
+    print(f"DEBUG: Struct pointer type: {struct_ptr.type}")
     
     # Get the struct type information
     struct_type = struct_ptr.type.pointee
     if not isinstance(struct_type, ir.LiteralStructType):
-        raise ValueError(f"Variable {node.struct_name} is not a struct")
+        raise ValueError(f"Variable {node.struct_name} is not a struct or class")
     
-    # Find the struct type name
-    struct_type_name = None
-    for name, (type_obj, _, _) in self.struct_types.items():
+    # Try to find the struct type name in both structs and classes
+    type_name = None
+    field_names = None
+    
+    # First try struct types
+    for name, (type_obj, names, _) in self.struct_types.items():
         if type_obj == struct_type:
-            struct_type_name = name
+            type_name = name
+            field_names = names
             break
     
-    if not struct_type_name:
-        raise ValueError(f"Could not find struct type for {node.struct_name}")
+    # If not found, try class types
+    if type_name is None:
+        for name, (type_obj, names, _) in self.class_types.items():
+            if type_obj == struct_type:
+                type_name = name
+                field_names = names
+                break
+    
+    if type_name is None or field_names is None:
+        raise ValueError(f"Could not find type info for {node.struct_name}")
+    
+    print(f"DEBUG: Found type {type_name} with fields {field_names}")
     
     # Get the member index
-    struct_type_info = self.struct_types[struct_type_name]
-    member_names = struct_type_info[1]
+    if node.member_name not in field_names:
+        raise ValueError(f"Struct or class {type_name} has no member named {node.member_name}")
     
-    if node.member_name not in member_names:
-        raise ValueError(f"Struct {struct_type_name} has no member named {node.member_name}")
-    
-    member_index = member_names.index(node.member_name)
+    member_index = field_names.index(node.member_name)
     
     # Get a pointer to the member
     zero = ir.Constant(self.int_type, 0)
