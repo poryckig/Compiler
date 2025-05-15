@@ -11,6 +11,14 @@ class Point {
         return this.x + this.y;
     }
 
+    int distanceSquared(Point other) {
+        int ox = other.getX();
+        int oy = other.getY();
+        int dx = this.x - ox;
+        int dy = this.y - oy;
+        return dx * dx + dy * dy;
+    }
+
     int getX() {
         return this.x;
     }
@@ -28,7 +36,55 @@ class Point {
     }
 };
 
+class Rectangle {
+    Point topLeft;
+    Point bottomRight;
+    
+    Rectangle(Point tl, Point br) {
+        this.topLeft = tl;
+        this.bottomRight = br;
+    }
+    
+    int area() {
+        Point tl = this.topLeft;
+        Point br = this.bottomRight;
+        
+        int tlx = tl.getX();
+        int tly = tl.getY();
+        int brx = br.getX();
+        int bry = br.getY();
+        
+        int width = brx - tlx;
+        int height = bry - tly;
+        return width * height;
+    }
+    
+    bool contains(Point p) {
+        Point tl = this.topLeft;
+        Point br = this.bottomRight;
+        
+        int px = p.getX();
+        int py = p.getY();
+        int tlx = tl.getX();
+        int tly = tl.getY();
+        int brx = br.getX();
+        int bry = br.getY();
+        
+        bool cond1 = px >= tlx;
+        bool cond2 = px <= brx;
+        bool cond3 = py >= tly;
+        bool cond4 = py <= bry;
+        
+        bool result1 = cond1 && cond2;
+        bool result2 = cond3 && cond4;
+        bool final = result1 && result2;
+        
+        return final;
+    }
+};
+
 void testClassMethods() {
+    // Podstawowe testy Point
     Point p = Point(10, 20);
     
     print "X value:";
@@ -54,7 +110,31 @@ void testClassMethods() {
     
     print "New sum of x and y:";
     print p.sum();
+    
+    // Testowanie distanceSquared
+    Point p2 = Point(53, 104);
+    print "Created second point p2(53, 104)";
+    
+    print "Distance squared between p and p2:";
+    print p.distanceSquared(p2);
+    
+    // Testowanie klasy Rectangle
+    print "Creating a rectangle with corners at p(50,100) and p2(53,104)";
+    Rectangle rect = Rectangle(p, p2);
+    
+    print "Rectangle area:";
+    print rect.area();
+    
+    // Testowanie metody contains
+    Point inside = Point(51, 102);
+    Point outside = Point(40, 90);
+    
+    print "Testing if point (51,102) is inside rectangle:";
+    print rect.contains(inside);
+    
+    print "Testing if point (40,90) is inside rectangle:";
+    print rect.contains(outside);
 }
 
-print "Testing class methods";
+print "Testing advanced class methods";
 testClassMethods();
