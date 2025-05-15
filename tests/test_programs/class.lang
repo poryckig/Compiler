@@ -7,6 +7,10 @@ class Point {
         this.y = y_val;
     }
     
+    int sum() {
+        return this.x + this.y;
+    }
+
     int getX() {
         return this.x;
     }
@@ -15,8 +19,12 @@ class Point {
         return this.y;
     }
     
-    int sum() {
-        return this.x + this.y;
+    void setX(int new_x) {
+        this.x = new_x;
+    }
+    
+    void setY(int new_y) {
+        this.y = new_y;
     }
 };
 
@@ -30,6 +38,21 @@ void testClassMethods() {
     print p.getY();
     
     print "Sum of x and y:";
+    print p.sum();
+    
+    print "Setting new X value to 50";
+    p.setX(50);
+    
+    print "Setting new Y value to 100";
+    p.setY(100);
+    
+    print "New X value:";
+    print p.getX();
+    
+    print "New Y value:";
+    print p.getY();
+    
+    print "New sum of x and y:";
     print p.sum();
 }
 

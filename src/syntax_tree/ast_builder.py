@@ -656,3 +656,15 @@ class ASTBuilder(langVisitor):
                 arguments.append(argument)
         
         return ClassMethodCall(obj_name, method_name, arguments)
+    
+    def visitMethodCall(self, ctx):
+        """Obsługuje wywołanie metody jako instrukcję."""
+        obj_name = ctx.ID(0).getText()
+        method_name = ctx.ID(1).getText()
+        
+        arguments = []
+        if ctx.argumentList():
+            for expr_ctx in ctx.argumentList().expression():
+                arguments.append(self.visit(expr_ctx))
+        
+        return ClassMethodCall(obj_name, method_name, arguments)

@@ -45,9 +45,14 @@ statement
     | switchStatement
     | returnStatement ';'
     | functionCall ';'
+    | methodCall ';'
     | blockStatement
     | breakStatement ';'
     | ';'
+    ;
+
+methodCall
+    : ID '.' ID '(' argumentList? ')'
     ;
 
 functionCall
