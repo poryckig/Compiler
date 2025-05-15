@@ -23,7 +23,8 @@ from src.structure.struct_generator import visit_StructDefinition, visit_StructD
 from src.classs.class_generator import (
     visit_ClassDefinition, _register_class_method, _register_class_constructor,
     visit_ClassDeclaration, visit_ThisExpression, visit_ThisMemberAccess,
-    visit_ThisMemberAssignment, visit_ClassInstantiation
+    visit_ThisMemberAssignment, visit_ClassInstantiation, visit_ClassMethodCall,
+    _implement_class_method
 )
 
 class LLVMGenerator:
@@ -329,3 +330,5 @@ LLVMGenerator.visit_ThisExpression = visit_ThisExpression
 LLVMGenerator.visit_ThisMemberAccess = visit_ThisMemberAccess
 LLVMGenerator.visit_ThisMemberAssignment = visit_ThisMemberAssignment
 LLVMGenerator.visit_ClassInstantiation = visit_ClassInstantiation
+LLVMGenerator.visit_ClassMethodCall = visit_ClassMethodCall
+LLVMGenerator._implement_class_method = _implement_class_method

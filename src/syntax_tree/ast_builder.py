@@ -345,6 +345,20 @@ class ASTBuilder(langVisitor):
                     # Jeśli expression() nie zwraca listy, używamy go bezpośrednio
                     return self.visit(expressions)
         
+        # Dodaj obsługę wywołania metody obiektu
+        if ctx.getChildCount() >= 5 and ctx.getChild(1).getText() == '.' and ctx.getChild(3).getText() == '(':
+            # Wzorzec ID.ID(args) - wywołanie metody obiektu
+            obj_name = ctx.getChild(0).getText()
+            method_name = ctx.getChild(2).getText()
+            
+            # Zbierz argumenty
+            arguments = []
+            if ctx.argumentList():
+                for expr_ctx in ctx.argumentList().expression():
+                    arguments.append(self.visit(expr_ctx))
+            
+            return ClassMethodCall(obj_name, method_name, arguments)
+        
         if ctx.functionCall():
             # Wywołanie funkcji
             return self.visit(ctx.functionCall())
@@ -630,3 +644,15 @@ class ASTBuilder(langVisitor):
         member_name = ctx.ID().getText()
         value = self.visit(ctx.expression())
         return ThisMemberAssignment(member_name, value)
+    
+    def visitObjectMethodCall(self, ctx):
+        obj_name = ctx.ID(0).getText()
+        method_name = ctx.ID(1).getText()
+        
+        arguments = []
+        if ctx.argumentList():
+            for expr_ctx in ctx.argumentList().expression():
+                argument = self.visit(expr_ctx)
+                arguments.append(argument)
+        
+        return ClassMethodCall(obj_name, method_name, arguments)

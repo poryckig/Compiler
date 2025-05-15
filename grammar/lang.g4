@@ -155,6 +155,7 @@ primaryExpression
     : '(' expression ')'                                 # ParenExpr
     | functionCall                                       # FuncCallExpr
     | ID '.' ID                                          # StructMemberAccess
+    | ID '.' ID '(' argumentList? ')'                    # ObjectMethodCall
     | 'this' '.' ID                                      # ThisMemberAccess
     | ID                                                 # VarExpr
     | ID '[' expression ']'                              # ArrayAccessExpr

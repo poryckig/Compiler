@@ -22,7 +22,7 @@ def visit_ClassDefinition(self, node):
     self.class_types[node.name] = (class_type, field_names, field_types)
     self.struct_types[node.name] = (class_type, field_names, field_types)  # Add to struct_types too!
     
-    # Register methods
+    # Register methods (deklaracje)
     for method in node.methods:
         self._register_class_method(node.name, method)
     
@@ -32,7 +32,105 @@ def visit_ClassDefinition(self, node):
     
     print(f"DEBUG: Class {node.name} defined with fields: {field_names}")
     
+    # Generate method implementations (now we'll add actual code for methods)
+    for method in node.methods:
+        self._implement_class_method(node.name, method)
+    
     return class_type
+
+def _implement_class_method(self, class_name, method):
+    """Generates the implementation for a class method."""
+    # Get the method from the class method table
+    if class_name not in self.class_methods or method.name not in self.class_methods[class_name]:
+        raise ValueError(f"Method {method.name} not registered for class {class_name}")
+    
+    function = self.class_methods[class_name][method.name]
+    full_method_name = f"{class_name}.{method.name}"
+    
+    print(f"DEBUG: Implementing method {full_method_name}")
+    
+    # Save current builder and function state
+    old_builder = self.builder
+    old_function = getattr(self, "current_function", None)
+    old_local_symbol_table = self.local_symbol_table.copy() if hasattr(self, "local_symbol_table") else {}
+    old_class = getattr(self, "current_class", None)
+    old_this_ptr = getattr(self, "this_ptr", None)
+    
+    # Set current function and class
+    self.current_function = function
+    self.current_class = class_name  # WAŻNE: ustawiamy aktualną klasę
+    
+    # Clear local symbol table
+    self.local_symbol_table = {}
+    
+    # Create entry block for the function
+    entry_block = function.append_basic_block(name="entry")
+    self.builder = ir.IRBuilder(entry_block)
+    
+    # Save current scope
+    old_scopes = self.symbol_table_stack.copy()
+    old_current_scope = self.current_scope.copy() if hasattr(self, "current_scope") else {}
+    
+    # Set new empty scope for the function
+    self.symbol_table_stack = []
+    self.current_scope = {}
+    
+    # Get the class type information to ensure proper typing
+    class_type, _, _ = self.class_types[class_name]
+    
+    # Create stack variable for 'this' parameter
+    # Ważne - arg[0] jest wskaźnikiem do struktury klasy, więc nie potrzebujemy dodatkowego poziomu wskaźnika
+    this_ptr = function.args[0]  # Używamy bezpośrednio argumentu
+    
+    # Store 'this' pointer in different places to ensure it's available
+    self.this_ptr = this_ptr
+    self.current_scope["this"] = this_ptr
+    self.local_symbol_table["this"] = this_ptr
+    
+    # Process other parameters
+    for i, param in enumerate(method.parameters):
+        param_type = function.args[i+1].type
+        param_var = self.builder.alloca(param_type, name=param.name)
+        self.builder.store(function.args[i+1], param_var)
+        
+        # Add parameter to local symbol table
+        self.add_local_variable(param.name, param_var)
+        self.local_symbol_table[param.name] = param_var
+    
+    # Visit method body
+    self.visit(method.body)
+    
+    # Add default return if block is not terminated
+    if not self.builder.block.is_terminated:
+        if isinstance(function.function_type.return_type, ir.VoidType):
+            self.builder.ret_void()
+        else:
+            # Create a default return value based on the return type
+            if isinstance(function.function_type.return_type, ir.IntType):
+                default_return = ir.Constant(function.function_type.return_type, 0)
+            elif isinstance(function.function_type.return_type, ir.FloatType) or isinstance(function.function_type.return_type, ir.DoubleType):
+                default_return = ir.Constant(function.function_type.return_type, 0.0)
+            elif isinstance(function.function_type.return_type, ir.LiteralStructType):
+                # For struct return type, allocate a zero-initialized struct
+                zero_struct = self.builder.alloca(function.function_type.return_type)
+                default_return = self.builder.load(zero_struct)
+            else:
+                # For other types (like pointers), return null
+                null_ptr = ir.Constant(function.function_type.return_type, None)
+                default_return = null_ptr
+                
+            self.builder.ret(default_return)
+    
+    # Restore previous context
+    self.builder = old_builder
+    self.current_function = old_function
+    self.local_symbol_table = old_local_symbol_table
+    self.symbol_table_stack = old_scopes
+    self.current_scope = old_current_scope
+    self.current_class = old_class
+    self.this_ptr = old_this_ptr
+    
+    return function
 
 def _register_class_method(self, class_name, method):
     """Registers a class method in the symbol table."""
@@ -44,7 +142,7 @@ def _register_class_method(self, class_name, method):
     
     # Add 'this' pointer as first parameter
     class_type, _, _ = self.class_types[class_name]
-    this_type = ir.PointerType(class_type)
+    this_type = ir.PointerType(class_type)  # Wskaźnik do klasy
     
     # Parameter types
     param_types = [this_type]  # 'this' pointer
@@ -242,37 +340,55 @@ def visit_ThisExpression(self, node):
 
 def visit_ThisMemberAccess(self, node):
     """Generates LLVM code for this.member access."""
-    # Get the 'this' pointer
-    this_ptr = self.visit_ThisExpression(None)
+    print(f"DEBUG: Accessing this.{node.member_name}")
     
-    # Get the class type
-    class_type = this_ptr.type.pointee
+    # First check if we're in a class context
+    if not hasattr(self, "current_class") or not self.current_class:
+        raise ValueError("'this' reference outside of class method")
     
-    # Find the class name
-    class_name = None
-    for name, (type_obj, _, _) in self.class_types.items():
-        if type_obj == class_type:
-            class_name = name
-            break
+    # Get the class name
+    class_name = self.current_class
     
-    if not class_name:
-        raise ValueError("Could not find class type for 'this'")
+    # Get class type information
+    if class_name not in self.class_types:
+        raise ValueError(f"Unknown class: {class_name}")
     
-    # Get the field index
-    class_type_info = self.class_types[class_name]
-    field_names = class_type_info[1]
+    class_type, field_names, _ = self.class_types[class_name]
     
+    # Get 'this' pointer - try different sources
+    if hasattr(self, "this_ptr") and self.this_ptr is not None:
+        this_ptr = self.this_ptr
+    elif "this" in self.current_scope:
+        this_ptr = self.current_scope["this"]
+    elif "this" in self.local_symbol_table:
+        this_ptr = self.local_symbol_table["this"]
+    else:
+        raise ValueError("Could not find 'this' pointer")
+    
+    print(f"DEBUG: Found this_ptr: {this_ptr}, type: {this_ptr.type}")
+    
+    # Check if the member exists
     if node.member_name not in field_names:
         raise ValueError(f"Class {class_name} has no field named {node.member_name}")
     
     field_index = field_names.index(node.member_name)
     
+    # If this_ptr is not a pointer, we need to create a temporary allocation
+    if not isinstance(this_ptr.type, ir.PointerType):
+        # Allocate temp storage
+        temp_ptr = self.builder.alloca(class_type, name="this_temp")
+        # Store the value
+        self.builder.store(this_ptr, temp_ptr)
+        # Update this_ptr to use the pointer
+        this_ptr = temp_ptr
+    
     # Get a pointer to the field
     zero = ir.Constant(self.int_type, 0)
     field_idx = ir.Constant(self.int_type, field_index)
+    
+    # Get pointer to the field
     field_ptr = self.builder.gep(this_ptr, [zero, field_idx], name=f"this.{node.member_name}")
     
-    # Return the pointer to the field
     return field_ptr
 
 def visit_ThisMemberAssignment(self, node):
@@ -363,3 +479,50 @@ def visit_ClassInstantiation(self, node):
     instance_ptr = self.builder.call(constructor, args, name="temp_instance")
     
     return instance_ptr
+
+def visit_ClassMethodCall(self, node):
+    """Generates LLVM code for object method call."""
+    print(f"DEBUG: Calling method {node.obj_name}.{node.method_name}")
+    
+    # Get the object from the symbol table
+    obj_ptr = self.find_variable(node.obj_name)
+    
+    # Get the object type
+    obj_type = obj_ptr.type.pointee
+    if not isinstance(obj_type, ir.LiteralStructType):
+        raise ValueError(f"{node.obj_name} is not an object")
+    
+    # Find the class name for this object
+    class_name = None
+    for name, (type_obj, _, _) in self.class_types.items():
+        if type_obj == obj_type:
+            class_name = name
+            break
+    
+    if not class_name:
+        raise ValueError(f"Could not determine class type for {node.obj_name}")
+    
+    # Check if the class has this method
+    if class_name not in self.class_methods or node.method_name not in self.class_methods[class_name]:
+        raise ValueError(f"Class {class_name} has no method named {node.method_name}")
+    
+    # Get the method
+    method = self.class_methods[class_name][node.method_name]
+    
+    # Process arguments
+    args = [obj_ptr]  # First argument is 'this' pointer
+    
+    for arg_expr in node.arguments:
+        arg = self.visit(arg_expr)
+        
+        # Load value if it's a pointer
+        if isinstance(arg.type, ir.PointerType) and not (
+                isinstance(arg.type.pointee, ir.IntType) and arg.type.pointee.width == 8):
+            arg = self.builder.load(arg)
+        
+        args.append(arg)
+    
+    # Call the method
+    result = self.builder.call(method, args, name=f"{node.obj_name}_{node.method_name}_call")
+    
+    return result

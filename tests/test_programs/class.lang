@@ -6,15 +6,32 @@ class Point {
         this.x = x_val;
         this.y = y_val;
     }
+    
+    int getX() {
+        return this.x;
+    }
+    
+    int getY() {
+        return this.y;
+    }
+    
+    int sum() {
+        return this.x + this.y;
+    }
 };
 
-void testClasses() {
-    // Simple constructor call
-    Point p1 = Point(10, 20);
+void testClassMethods() {
+    Point p = Point(10, 20);
     
-    print p1.x;
-    print p1.y;
+    print "X value:";
+    print p.getX();
+    
+    print "Y value:";
+    print p.getY();
+    
+    print "Sum of x and y:";
+    print p.sum();
 }
 
-print "Testing classes";
-testClasses();
+print "Testing class methods";
+testClassMethods();
