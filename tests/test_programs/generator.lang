@@ -1,0 +1,58 @@
+// Generator that yields a sequence of values
+generator int sequence(int start, int count) {
+    int i = 0;
+    int current = start;
+    
+    while (i < count) {
+        yield current;
+        current = current + 1;
+        i = i + 1;
+    }
+}
+
+// Struct to hold generator state
+struct Generator {
+    int value;   // Current value
+    int done;    // Use 0 for false, 1 for true
+};
+
+// Global variables for generator state
+int g_state = 0;
+int g_max_state = 11;
+
+// Function to get next value from generator
+Generator next_value(int gen_id) {
+    Generator result;
+    
+    // State machine implementation
+    if (gen_id == 1) {
+        // (sequence 10, 11, 12, ...)
+        if (g_state < g_max_state) {
+            result.value = 10 + g_state;
+            result.done = 0;  // 0 means not done (false)
+            g_state = g_state + 1;
+        } else {
+            result.value = 0;
+            result.done = 1;  // 1 means done (true)
+        }
+    }
+    
+    return result;
+}
+
+void main() {
+    // ID for sequence generator
+    int gen = 1;
+    
+    // Use the generator to get a sequence
+    Generator result;
+    result.done = 0;  // 0 means not done (false)
+    
+    while (result.done == 0) {  // While not done
+        result = next_value(gen);
+        
+        if (result.done == 0) {  // If not done
+            print result.value;
+        }
+    }
+}

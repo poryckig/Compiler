@@ -1,7 +1,7 @@
 grammar lang;
 
 program
-    : (structDefinition | classDefinition | functionDeclaration | statement)+ EOF
+    : (structDefinition | classDefinition | functionDeclaration | generatorDeclaration | statement)+ EOF
     ;
 
 structDefinition
@@ -26,6 +26,10 @@ functionDeclaration
     : type ID '(' parameterList? ')' blockStatement
     ;
 
+generatorDeclaration
+    : 'generator' type ID '(' parameterList? ')' blockStatement
+    ;
+
 parameterList
     : parameter (',' parameter)*
     ;
@@ -44,11 +48,16 @@ statement
     | forStatement
     | switchStatement
     | returnStatement ';'
+    | yieldStatement ';'
     | functionCall ';'
     | methodCall ';'
     | blockStatement
     | breakStatement ';'
     | ';'
+    ;
+
+yieldStatement
+    : 'yield' expression
     ;
 
 methodCall

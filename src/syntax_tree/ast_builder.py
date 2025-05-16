@@ -7,31 +7,39 @@ class ASTBuilder(langVisitor):
     def __init__(self):
         super().__init__()
 
-    def visitProgram(self, ctx:langParser.ProgramContext):
-        functions = []
-        statements = []
-        struct_definitions = []
-        class_definitions = []
+    def visitProgram(self, ctx):
+        result = Program()
+        result.struct_definitions = []
+        result.class_definitions = []
+        result.functions = []
+        result.generators = []
+        result.statements = []
         
+        # Process each child of the program
         for child in ctx.children:
-            if isinstance(child, langParser.FunctionDeclarationContext):
-                func = self.visit(child)
-                if func:
-                    functions.append(func)
-            elif isinstance(child, langParser.StructDefinitionContext):
-                struct_def = self.visit(child)
-                if struct_def:
-                    struct_definitions.append(struct_def)
+            if child.getText() == '<EOF>':
+                continue
+            
+            # Debug info for the developer
+            print(f"Processing node: {type(child).__name__}")
+            
+            # Process each type of statement
+            if isinstance(child, langParser.StructDefinitionContext):
+                result.struct_definitions.append(self.visit(child))
             elif isinstance(child, langParser.ClassDefinitionContext):
-                class_def = self.visit(child)
-                if class_def:
-                    class_definitions.append(class_def)
-            elif isinstance(child, langParser.StatementContext):
-                stmt = self.visit(child)
-                if stmt:
-                    statements.append(stmt)
+                result.class_definitions.append(self.visit(child))
+            elif isinstance(child, langParser.FunctionDeclarationContext):
+                result.functions.append(self.visit(child))
+            elif isinstance(child, langParser.GeneratorDeclarationContext):
+                print(f"Found generator declaration: {child.ID().getText()}")
+                result.generators.append(self.visit(child))
+            else:
+                # Regular statement or something else?
+                node = self.visit(child)
+                if node is not None:  # Only add non-None results
+                    result.statements.append(node)
         
-        return Program(statements, functions, struct_definitions, class_definitions)
+        return result
 
     def visitStatement(self, ctx:langParser.StatementContext):
         print(f"Statement children: {[ctx.getChild(i).getText() for i in range(ctx.getChildCount())]}")
@@ -172,6 +180,12 @@ class ASTBuilder(langVisitor):
         value_text = ctx.FLOAT().getText()
         value = float(value_text)
         return FloatLiteral(value)
+    
+    def visitBoolLiteral(self, ctx):
+        """Visit a bool literal node."""
+        value_text = ctx.getText()
+        value = (value_text == 'true')
+        return BoolLiteral(value)
     
 #           * * * * I/O * * * * 
     def visitPrintStatement(self, ctx:langParser.PrintStatementContext):
@@ -668,3 +682,41 @@ class ASTBuilder(langVisitor):
                 arguments.append(self.visit(expr_ctx))
         
         return ClassMethodCall(obj_name, method_name, arguments)
+    
+    def visitGeneratorDeclaration(self, ctx):
+        print(f"Visiting generator declaration: {ctx.ID().getText()}")
+        return_type = ctx.type_().getText()
+        name = ctx.ID().getText()
+        
+        # Parameter list
+        parameters = []
+        if ctx.parameterList():
+            print(f"Found parameter list in generator {name}")
+            parameters = self.visit(ctx.parameterList())
+            print(f"Parsed parameters: {[p.name for p in parameters]}")
+        else:
+            print(f"No parameter list found in generator {name}")
+        
+        # Body
+        body = self.visit(ctx.blockStatement())
+        
+        return GeneratorDeclaration(return_type, name, parameters, body)
+
+    def visitYieldStatement(self, ctx):
+        expression = self.visit(ctx.expression())
+        return YieldStatement(expression)
+    
+    def visitParameterList(self, ctx):
+        parameters = []
+        print(f"Processing parameter list with {len(ctx.parameter())} parameters")
+        for param_ctx in ctx.parameter():
+            param = self.visit(param_ctx)
+            parameters.append(param)
+            print(f"Added parameter: {param.name} of type {param.param_type}")
+        return parameters
+
+    def visitParameter(self, ctx):
+        param_type = ctx.type_().getText()
+        param_name = ctx.ID().getText()
+        print(f"Processing parameter: {param_name} of type {param_type}")
+        return Parameter(param_type, param_name)

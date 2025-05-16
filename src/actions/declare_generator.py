@@ -15,6 +15,10 @@ def visit_VariableDeclaration(self, node):
     
     print(f"Deklaracja zmiennej {node.name} typu {var_type}")
     
+    # Check if the builder is available
+    if self.builder is None:
+        raise ValueError(f"Builder is None when declaring variable {node.name}")
+    
     # Determine if the variable is global
     is_global = not self.symbol_table_stack  # Empty stack means global scope
     

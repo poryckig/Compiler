@@ -2,11 +2,12 @@ class ASTNode:
     pass
 
 class Program:
-    def __init__(self, statements, functions=None, struct_definitions=None, class_definitions=None):
-        self.statements = statements
-        self.functions = functions or []
-        self.struct_definitions = struct_definitions or []
-        self.class_definitions = class_definitions or []
+    def __init__(self):
+        self.struct_definitions = []
+        self.class_definitions = []
+        self.functions = []
+        self.generators = []
+        self.statements = []
 
 #           * * * * DECLARATION * * * * 
 class VariableDeclaration(ASTNode):
@@ -265,3 +266,15 @@ class ClassMethodCall(ASTNode):
         self.obj_name = obj_name
         self.method_name = method_name
         self.arguments = arguments
+        
+#           * * * * FUNCTION-GENERATOR * * * *         
+class GeneratorDeclaration:
+    def __init__(self, return_type, name, parameters, body):
+        self.return_type = return_type
+        self.name = name
+        self.parameters = parameters or []  # Ensure it's never None
+        self.body = body
+
+class YieldStatement:
+    def __init__(self, expression):
+        self.expression = expression

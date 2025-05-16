@@ -27,36 +27,44 @@ from src.classs.class_generator import (
     _implement_class_method
 )
 
+from src.generator.generator_generator import (
+    visit_GeneratorDeclaration, 
+    _create_generator_next_function, 
+    _find_yield_statements, 
+    visit_YieldStatement,
+    visit_GeneratorIterator
+)
+
 class LLVMGenerator:
     def __init__(self):
-        # Inicjalizacja LLVM
+        # Initialize LLVM
         llvm.initialize()
         llvm.initialize_native_target()
         llvm.initialize_native_asmprinter()
         
-        # Tworzenie modułu
+        # Create module
         self.module = ir.Module(name="program")
         
-        # Ustaw target triple dla Windows
+        # Set target triple for Windows
         if sys.platform == 'win32':
             self.module.triple = "x86_64-pc-windows-msvc"
         
-        # Przygotowanie typów
+        # Prepare types
         self.int_type = ir.IntType(32)
-        self.float_type = ir.FloatType()      # 32-bitowy float (float32)
-        self.double_type = ir.DoubleType()    # 64-bitowy float (float64)
+        self.float_type = ir.FloatType()      # 32-bit float (float32)
+        self.double_type = ir.DoubleType()    # 64-bit float (float64)
         self.void_type = ir.VoidType()
         
-        # Słownik zmiennych globalnych (symbol table)
+        # Global symbol table dictionary
         self.global_symbol_table = {}
         
-        # Stos tablic symboli dla zasięgów lokalnych
+        # Symbol table scope stack
         self.symbol_table_stack = []
         
-        # Aktualnie aktywna tablica symboli
+        # Currently active symbol table
         self.current_scope = {}
         
-        # Słownik zmiennych lokalnych dla bieżącej funkcji
+        # Local variable dictionary for current function
         self.local_symbol_table = {}
         
         # Add struct type registry
@@ -69,16 +77,19 @@ class LLVMGenerator:
         self.current_method = None  # Current method being processed
         self.this_ptr = None  # Current 'this' pointer
         
-        # Licznik dla unikalnych identyfikatorów
+        # Counter for unique identifiers
         self._global_counter = self._make_counter()
         
-        # Funkcja main
-        self.setup_main_function()
+        # Flag to track if we've found a main function
+        self.has_main_function = False
         
-        # Deklaracja funkcji printf i scanf
+        # Create a dummy global initialization function for global variables
+        self._create_global_init_function()
+        
+        # Declare external functions
         self.declare_external_functions()
         
-        # Dodaj kompatybilność, mapując symbol_table na global_symbol_table
+        # For compatibility, map symbol_table to global_symbol_table
         self.symbol_table = self.global_symbol_table
 
     # Nowe metody do zarządzania zasięgami
@@ -132,13 +143,15 @@ class LLVMGenerator:
             counter += 1
     
     def setup_main_function(self):
-        # Definicja funkcji main
-        func_type = ir.FunctionType(self.int_type, [])
-        self.main_func = ir.Function(self.module, func_type, name="main")
-        
-        # Blok wejściowy
-        self.entry_block = self.main_func.append_basic_block(name="entry")
-        self.builder = ir.IRBuilder(self.entry_block)
+        # Only create main if it doesn't exist in the source code
+        if "main" not in self.global_symbol_table:
+            # Definition of the main function
+            func_type = ir.FunctionType(self.int_type, [])
+            self.main_func = ir.Function(self.module, func_type, name="main")
+            
+            # Entry block
+            self.entry_block = self.main_func.append_basic_block(name="entry")
+            self.builder = ir.IRBuilder(self.entry_block)
     
     def declare_external_functions(self):
         # Deklaracja printf dla instrukcji print
@@ -154,13 +167,48 @@ class LLVMGenerator:
         self.scanf_func = ir.Function(self.module, scanf_type, name="my_scanf")
     
     def generate(self, ast):
-        # Generowanie kodu z AST
+        # Generate code from AST
         self.visit(ast)
         
-        # Dodanie return 0 na końcu main
-        self.builder.ret(ir.Constant(self.int_type, 0))
+        # Finish the global init function
+        self.builder.ret_void()
         
-        # Zwróć wygenerowany LLVM IR jako string
+        # If we didn't find a main function, create a default one
+        if not self.has_main_function:
+            print("DEBUG: Creating default main function")
+            # Define main function
+            func_type = ir.FunctionType(self.int_type, [])
+            self.main_func = ir.Function(self.module, func_type, name="main")
+            
+            # Entry block
+            entry_block = self.main_func.append_basic_block(name="entry")
+            self.builder = ir.IRBuilder(entry_block)
+            
+            # Call global init function
+            self.builder.call(self.global_init_func, [])
+            
+            # Add return 0 to the end of main
+            self.builder.ret(ir.Constant(self.int_type, 0))
+        else:
+            # If we have a user-defined main, add the global init call to it
+            # Find all basic blocks in the main function
+            main_func = self.global_symbol_table["main"]
+            main_entry = main_func.basic_blocks[0]
+            
+            # Save the current builder
+            old_builder = self.builder
+            
+            # Create a new builder at the start of the main function
+            self.builder = ir.IRBuilder()
+            self.builder.position_at_start(main_entry)
+            
+            # Add call to global init
+            self.builder.call(self.global_init_func, [])
+            
+            # Restore old builder
+            self.builder = old_builder
+        
+        # Return generated LLVM IR as string
         return str(self.module)
     
     def visit(self, node):
@@ -184,36 +232,91 @@ class LLVMGenerator:
         
         # KROK 1: Register all functions (declarations only, no implementation)
         for func in node.functions:
-            # Określ typ zwracany przez funkcję
+            # Check if this is the main function
+            if func.name == "main":
+                self.has_main_function = True
+                
+            # Determine return type
             return_type = self.get_llvm_type(func.return_type)
             
-            # Typy parametrów
+            # Parameter types
             param_types = [self.get_llvm_type(param.param_type) for param in func.parameters]
             
-            # Typ funkcji (typ zwracany + typy parametrów)
+            # Function type (return type + parameter types)
             func_type = ir.FunctionType(return_type, param_types)
             
-            # Utwórz funkcję
+            # Create function
             function = ir.Function(self.module, func_type, name=func.name)
             
-            # Ustaw nazwy parametrów
+            # If this is main, save reference to it
+            if func.name == "main":
+                self.main_func = function
+            
+            # Set parameter names
             for i, param in enumerate(func.parameters):
                 function.args[i].name = param.name
             
-            # Zapisz funkcję w globalnej tablicy symboli
+            # Store function in global symbol table
             self.global_symbol_table[func.name] = function
-            print(f"DEBUG: Zarejestrowano funkcję {func.name} w KROKU 1")
+            print(f"DEBUG: Registered function {func.name} in STEP 1")
         
-        # KROK 2: Przetwórz zmienne globalne
+        # KROK 1.5: Register all generators
+        for generator in node.generators:
+            try:
+                print(f"DEBUG: Registering generator: {generator.name}")
+                
+                # For simplicity in this initial implementation, treat generators as regular functions
+                # that return their yield type
+                return_type = self.get_llvm_type(generator.return_type)
+                
+                # Ensure parameters is never None
+                if not hasattr(generator, 'parameters') or generator.parameters is None:
+                    generator.parameters = []
+                    print(f"WARNING: Generator {generator.name} has no parameters")
+                
+                # Parameter types
+                param_types = []
+                for param in generator.parameters:
+                    print(f"DEBUG: Generator parameter: {param.name} of type {param.param_type}")
+                    param_type = self.get_llvm_type(param.param_type)
+                    param_types.append(param_type)
+                
+                # Create function type
+                func_type = ir.FunctionType(return_type, param_types)
+                
+                # Create function
+                function = ir.Function(self.module, func_type, name=generator.name)
+                
+                # Set parameter names
+                for i, param in enumerate(generator.parameters):
+                    function.args[i].name = param.name
+                
+                # Store function in global symbol table
+                self.global_symbol_table[generator.name] = function
+                print(f"DEBUG: Successfully registered generator {generator.name}")
+                
+            except Exception as e:
+                print(f"ERROR registering generator {generator.name}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+        
+        # KROK 2: Process global variables
         for stmt in node.statements:
             if isinstance(stmt, VariableDeclaration):
                 self.visit(stmt)
         
-        # KROK 3: Przetwórz ciała funkcji
+        # KROK 3: Process function bodies
         for func in node.functions:
             self.visit(func)
         
-        # KROK 4: Przetwórz pozostałe instrukcje głównego programu
+        # KROK 4: Process generator bodies
+        for generator in node.generators:
+            try:
+                self.visit(generator)
+            except Exception as e:
+                print(f"ERROR processing generator {generator.name}: {str(e)}")
+        
+        # KROK 5: Process remaining main program statements
         for stmt in node.statements:
             if not isinstance(stmt, VariableDeclaration):
                 self.visit(stmt)
@@ -266,6 +369,19 @@ class LLVMGenerator:
             self.global_symbol_table[name] = value
         else:
             self.local_symbol_table[name] = value
+            
+    def _create_global_init_function(self):
+        """Create a dummy function to initialize global variables."""
+        # Define a global initialization function
+        func_type = ir.FunctionType(self.void_type, [])
+        self.global_init_func = ir.Function(self.module, func_type, name=".global_init")
+        
+        # Create entry block
+        entry_block = self.global_init_func.append_basic_block(name="entry")
+        self.builder = ir.IRBuilder(entry_block)
+        
+        # This function will be filled with global variable initializations
+        # And closed at the end of code generation
 
 # Przypisanie metod do klasy
 LLVMGenerator.visit_Variable = visit_Variable
@@ -332,3 +448,9 @@ LLVMGenerator.visit_ThisMemberAssignment = visit_ThisMemberAssignment
 LLVMGenerator.visit_ClassInstantiation = visit_ClassInstantiation
 LLVMGenerator.visit_ClassMethodCall = visit_ClassMethodCall
 LLVMGenerator._implement_class_method = _implement_class_method
+
+LLVMGenerator.visit_GeneratorDeclaration = visit_GeneratorDeclaration
+LLVMGenerator._create_generator_next_function = _create_generator_next_function
+LLVMGenerator._find_yield_statements = _find_yield_statements
+LLVMGenerator.visit_YieldStatement = visit_YieldStatement
+LLVMGenerator.visit_GeneratorIterator = visit_GeneratorIterator

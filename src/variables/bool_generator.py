@@ -1,7 +1,9 @@
 import llvmlite.ir as ir
 
 def visit_BoolLiteral(self, node):
-    """Generuje kod LLVM dla literału logicznego."""
-    # Konwersja 'true'/'false' na wartości logiczne
-    bool_value = 1 if node.value == 'true' else 0
-    return ir.Constant(ir.IntType(1), bool_value)
+    """Generates LLVM code for boolean literals."""
+    print(f"DEBUG: Generating boolean literal: {node.value}")
+    
+    # Create a constant of i1 type (LLVM's boolean type)
+    value = 1 if node.value == True else 0
+    return ir.Constant(ir.IntType(1), value)
